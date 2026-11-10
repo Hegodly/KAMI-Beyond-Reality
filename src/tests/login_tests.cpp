@@ -35,10 +35,10 @@ int main() {
     "<member><name>session_id</name><value><string>abcdef01-2345-6789-abcd-ef0123456789</string></value></member>"
     "</struct></value></param></params></methodResponse>";
   // Some XML-RPC servers encode booleans as 1 rather than string true.
-  assert(!parse_login_response(success,result) || result.authenticated);
+  assert(parse_login_response(success,result) && result.authenticated);
   auto valid=success;
   const auto pos=valid.find("<boolean>1</boolean>");
-  valid.replace(pos,19,"<string>true</string>");
+  valid.replace(pos,std::string("<boolean>1</boolean>").size(),"<string>true</string>");
   assert(parse_login_response(valid,result));
   assert(result.authenticated && result.session.endpoint.port==13000);
   auto failed=valid;
