@@ -1,0 +1,28 @@
+#pragma once
+#include "region.h"
+#include <cstdint>
+#include <vector>
+namespace kami::world {
+struct TerrainVertex { float x, y, z, r, g, b; };
+struct TerrainMesh {
+  std::vector<TerrainVertex> vertices;
+  std::vector<uint32_t> indices;
+};
+// Simulator terrain patches are decoded elsewhere. This class applies decoded
+// samples to a full region heightfield, handling out-of-order patch arrival.
+class TerrainAssembler {
+public:
+  TerrainAssembler(uint32_t width, uint32_t height, float spacing = 1.0f);
+  bool apply_patch(uint32_t x, uint32_t y, uint32_t width, uint32_t height,
+                   const std::vector<float>& samples);
+  const Heightfield& heightfield() const { return heights_; }
+  bool complete() const { return received_count_ == received_.size(); }
+  size_t received_samples() const { return received_count_; }
+private:
+  Heightfield heights_;
+  std::vector<uint8_t> received_;
+  size_t received_count_ = 0;
+};
+TerrainMesh make_terrain_mesh(const Heightfield& heights);
+Heightfield make_demo_heightfield(uint32_t side = 129);
+}
