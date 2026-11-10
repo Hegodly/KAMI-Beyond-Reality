@@ -218,6 +218,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         }
       }
       if (connected_session && live_terrain) {
+        connected_session->tick();
         connected_session->poll([&](const kami::sl::Packet& packet,
                                     const kami::sl::MessageId&) {
           live_terrain->ingest_packet(packet);
