@@ -23,4 +23,7 @@ int main() {
   LandGroupHeader header;
   assert(read_land_group_header(header_reader,header));
   assert(header.stride==0x1234 && header.patch_size==16 && header.layer_type==0x4C);
+  const uint8_t invalid_header[]={0,1,8,0x4C};
+  LandBitReader bad(invalid_header,sizeof(invalid_header));
+  assert(!read_land_group_header(bad,header));
 }
