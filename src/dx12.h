@@ -20,7 +20,8 @@ public:
   // This is not texture/material/mesh-asset rendering yet.
   bool set_region_scene(const world::TerrainAssembler& terrain,
                         const world::SceneObjects* objects,
-                        const world::TextureAtlas* atlas=nullptr);
+                        const world::TextureAtlas* atlas=nullptr,
+                        const world::MeshAssetQueue* meshes=nullptr);
   // Uploads one validated CPU atlas into an SRV; call on render thread.
   bool upload_texture_atlas(const world::TextureAtlas& atlas);
   bool showing_recorded_terrain() const { return recorded_terrain; }
