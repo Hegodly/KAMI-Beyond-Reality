@@ -100,8 +100,14 @@ bool tint_primitive_proxy(const SceneObject& ob,TerrainMesh& mesh,const TextureA
           const float local_u=(face<2?(v.x/sx+0.5f):
                                 face<4?(v.z/sy+0.5f):(v.x/sx+0.5f));
           const float local_v=(face<4?(v.y/sz+0.5f):(v.z/sy+0.5f));
-          if(atlas->uv(ob.textures.faces[face].texture_id,
-                       local_u,local_v,v.u,v.v))v.texture_mix=1.f;
+          float slot=0,transformed_u=0,transformed_v=0;
+          const auto& material=ob.textures.faces[face];
+          if(transform_texture_uv(material,local_u,local_v,
+                                  transformed_u,transformed_v) &&
+             atlas->shader_slot(material.texture_id,slot)) {
+            v.u=transformed_u;v.v=transformed_v;
+            v.texture_mix=slot;
+          }
         }
         colored.indices.push_back(static_cast<uint32_t>(colored.vertices.size()));
         colored.vertices.push_back(v);
