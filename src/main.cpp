@@ -1,5 +1,13 @@
 #include "dx12.h"
 #include "world/terrain_capture.h"
+#include "world/terrain_stream.h"
+#include "world/login_protocol.h"
+#include "world/simulator_session.h"
+#include <future>
+#include <chrono>
+#include <memory>
+#include <algorithm>
+#include <string>
 #include <commdlg.h>
 #include <filesystem>
 #include <fstream>
@@ -10,6 +18,10 @@ namespace {
 kami::Dx12* active_renderer = nullptr;
 HWND login_panel = nullptr;
 HWND username_input = nullptr;
+HWND password_input = nullptr;
+std::future<kami::sl::LoginResult> login_future;
+std::unique_ptr<kami::sl::SimulatorSession> connected_session;
+std::unique_ptr<kami::world::TerrainStream> live_terrain;
 HWND status_text = nullptr;
 std::vector<HWND> ui_controls;
 HFONT ui_font = nullptr;
@@ -17,6 +29,55 @@ HBRUSH dark_brush = nullptr;
 constexpr int LOGIN_BUTTON = 1001;
 constexpr int DEMO_BUTTON = 1002;
 constexpr int CAPTURE_BUTTON = 1003;
+std::wstring control_text(HWND control, int limit) {
+  const int n = GetWindowTextLengthW(control);
+  if (n<1 || n>limit) return {};
+  std::wstring buffer(size_t(n)+1,L'\0');
+  const int copied = GetWindowTextW(control,buffer.data(),n+1);
+  buffer.resize(static_cast<size_t>(std::max(0,copied)));
+  return buffer;
+}
+std::string to_utf8(const std::wstring& input) {
+  if (input.empty()) return {};
+  const int n=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,input.data(),
+    static_cast<int>(input.size()),nullptr,0,nullptr,nullptr);
+  if (n<=0) return {};
+  std::string output(size_t(n),'\0');
+  if (WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,input.data(),
+    static_cast<int>(input.size()),output.data(),n,nullptr,nullptr)!=n) return {};
+  return output;
+}
+void start_login() {
+  if (login_future.valid()) {
+    SetWindowTextW(status_text,L"Login is already in progress.");
+    return;
+  }
+  std::wstring name=control_text(username_input,100);
+  std::wstring secret=control_text(password_input,1024);
+  SetWindowTextW(password_input,L"");
+  kami::sl::LoginCredentials credentials;
+  credentials.username=to_utf8(name);
+  credentials.password=to_utf8(secret);
+  if (!secret.empty()) SecureZeroMemory(secret.data(),secret.size()*sizeof(wchar_t));
+  std::string first,last;
+  if (!kami::sl::split_avatar_name(credentials.username,first,last) ||
+      credentials.password.empty()) {
+    SetWindowTextW(status_text,L"Enter a valid avatar name and password.");
+    std::fill(credentials.password.begin(),credentials.password.end(),'\0');
+    return;
+  }
+  if (connected_session) connected_session->disconnect();
+  connected_session.reset();
+  live_terrain.reset();
+  SetWindowTextW(status_text,L"Connecting securely to the official Second Life login server...");
+  login_future=std::async(std::launch::async,
+    [credentials=std::move(credentials)]() mutable {
+      auto result=kami::sl::login_to_second_life(credentials);
+      std::fill(credentials.password.begin(),credentials.password.end(),'\0');
+      return result;
+    });
+}
+
 void show_demo(HWND window) {
   for (HWND c : ui_controls) ShowWindow(c, SW_HIDE);
   if (login_panel) ShowWindow(login_panel, SW_HIDE);
@@ -62,10 +123,7 @@ LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     if (LOWORD(wp) == DEMO_BUTTON) { show_demo(hwnd); return 0; }
     if (LOWORD(wp) == CAPTURE_BUTTON) { open_capture(hwnd); return 0; }
     if (LOWORD(wp) == LOGIN_BUTTON) {
-      // Never request or store an SL password before authenticated TLS login
-      // and MFA support are implemented.
-      SetWindowTextW(status_text,
-        L"Second Life authentication is not connected yet. No credentials sent.");
+      start_login();
       return 0;
     }
   }
@@ -85,7 +143,7 @@ void create_login(HWND window, HINSTANCE instance) {
     DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
     CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
   login_panel = CreateWindowExW(WS_EX_CONTROLPARENT, L"STATIC", L"",
-    WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 48, 48, 650, 460,
+    WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 48, 48, 650, 520,
     window, nullptr, instance, nullptr);
   auto add = [&](const wchar_t* cls, const wchar_t* caption, DWORD flags,
                  int x, int y, int w, int h, int id = 0) {
@@ -99,19 +157,22 @@ void create_login(HWND window, HINSTANCE instance) {
     return c;
   };
   add(L"STATIC", L"KAMI  /  BEYOND REALITY", SS_LEFT, 24, 24, 590, 40);
-  add(L"STATIC", L"SECOND LIFE  -  OFFLINE DX12 PREVIEW (NO LOGIN)", SS_LEFT, 24, 76, 590, 30);
+  add(L"STATIC", L"SECOND LIFE  -  EXPERIMENTAL LIVE LOGIN / DX12 PREVIEW", SS_LEFT, 24, 76, 590, 30);
   add(L"STATIC", L"Avatar username", SS_LEFT, 24, 130, 520, 26);
   username_input = add(L"EDIT", L"", WS_TABSTOP | WS_BORDER | ES_AUTOHSCROLL,
     24, 163, 550, 36);
-  add(L"BUTTON", L"Connect (coming soon)", WS_TABSTOP | BS_PUSHBUTTON,
-    24, 222, 265, 42, LOGIN_BUTTON);
+  add(L"STATIC", L"Second Life password (never saved)", SS_LEFT,24,210,550,26);
+  password_input = add(L"EDIT",L"",WS_TABSTOP | WS_BORDER | ES_PASSWORD | ES_AUTOHSCROLL,
+    24,242,550,36);
+  add(L"BUTTON", L"Connect to Second Life", WS_TABSTOP | BS_PUSHBUTTON,
+    24, 300, 265, 42, LOGIN_BUTTON);
   add(L"BUTTON", L"Explore DX12 demo", WS_TABSTOP | BS_PUSHBUTTON,
-    303, 222, 271, 42, DEMO_BUTTON);
-  add(L"BUTTON", L"Load recorded simulator terrain (.kudp)", WS_TABSTOP | BS_PUSHBUTTON,
-    24, 280, 550, 42, CAPTURE_BUTTON);
+    303, 300, 271, 42, DEMO_BUTTON);
+  add(L"BUTTON", L"Load recorded terrain (.kudp)", WS_TABSTOP | BS_PUSHBUTTON,
+    24, 354, 550, 42, CAPTURE_BUTTON);
   status_text = add(L"STATIC",
-    L"Authentication is not connected. Do not enter a password.",
-    SS_LEFT, 24, 346, 580, 60);
+    L"Experimental authentication; MFA and full world features are not complete.",
+    SS_LEFT, 24, 416, 580, 76);
 }
 }
 int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
