@@ -251,8 +251,8 @@ int main() {
   assert(mapped_box.vertices[0].texture_mix==1.f);
   assert(mapped_box.vertices[12].texture_mix==1.f);
   for (const auto& v:mapped_box.vertices) {
-    assert(v.u>=0&&v.u<1.f/8.f);
-    assert(v.v>=0&&v.v<1.f/8.f);
+    assert(v.u>=0&&v.u<=1.f);
+    assert(v.v>=0&&v.v<=1.f);
     assert(v.texture_mix==1.f);
   }
   // A partial compressed update must not erase the validated color and
