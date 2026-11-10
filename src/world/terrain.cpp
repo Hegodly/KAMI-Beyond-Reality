@@ -15,6 +15,11 @@ TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacin
   heights_.elevations.assign(size_t(width) * height, 0.0f);
   received_.assign(size_t(width) * height, 0);
 }
+bool TerrainAssembler::sample_height(uint32_t x, uint32_t y, float& elevation) const {
+  if (!has_sample(x, y)) return false;
+  elevation = heights_.elevations[size_t(y) * heights_.width + x];
+  return true;
+}
 bool TerrainAssembler::apply_patch_batch(const std::vector<TerrainPatch>& patches) {
   if (patches.empty()) return false;
   for (const auto& patch : patches)
