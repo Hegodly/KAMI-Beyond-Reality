@@ -1,19 +1,21 @@
 #pragma once
 #include "mesh_asset_header.h"
+#include "mesh_geometry.h"
 #include "texture_asset_queue.h"
 #include <cstddef>
 #include <map>
 #include <vector>
 namespace kami::world {
-enum class MeshDownloadState {Queued,InFlight,HeaderReady,Failed};
+enum class MeshDownloadState {Queued,InFlight,HeaderReady,DecodedReady,Failed};
 struct MeshAssetRecord {
   MeshDownloadState state=MeshDownloadState::Queued;
   MeshAssetHeader header{};
+  DecodedMeshGeometry geometry{};
   std::vector<uint8_t> bytes;
   unsigned attempts=0;
 };
 struct MeshQueueStats {
-  size_t queued=0,in_flight=0,header_ready=0,failed=0,bytes=0;
+  size_t queued=0,in_flight=0,header_ready=0,decoded_ready=0,failed=0,bytes=0;
 };
 class MeshAssetQueue {
 public:

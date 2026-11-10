@@ -121,8 +121,11 @@ target_include_directories(kami_mesh_header_tests PRIVATE ${CMAKE_CURRENT_SOURCE
 add_test(NAME binary_llsd_mesh_header_bounds COMMAND kami_mesh_header_tests)
 
 add_executable(kami_mesh_queue_tests tests/mesh_asset_queue_tests.cpp
- world/mesh_asset_queue.cpp world/mesh_asset_header.cpp world/texture_asset_queue.cpp)
+ world/mesh_asset_queue.cpp world/mesh_asset_header.cpp world/mesh_geometry.cpp
+  world/texture_asset_queue.cpp world/terrain.cpp world/land_layer.cpp
+  world/region_protocol.cpp world/lludp.cpp)
 target_include_directories(kami_mesh_queue_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(kami_mesh_queue_tests PRIVATE zlibstatic)
 add_test(NAME mesh_asset_staging_queue COMMAND kami_mesh_queue_tests)
 
 add_executable(kami_mesh_geometry_tests tests/mesh_geometry_tests.cpp

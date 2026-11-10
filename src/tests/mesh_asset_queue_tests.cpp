@@ -32,6 +32,7 @@ int main(){
   auto data=valid_asset();
   assert(queue.finish(a,data));
   assert(queue.stats().header_ready==1);
+  assert(queue.stats().decoded_ready==0); // synthetic header has no valid zlib LOD
   assert(queue.get(a)&&queue.get(a)->header.high.size==5);
   assert(queue.stats().bytes==data.size());
   assert(!queue.finish(a,data));

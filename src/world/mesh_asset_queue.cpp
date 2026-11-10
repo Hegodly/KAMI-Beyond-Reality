@@ -38,8 +38,12 @@ bool MeshAssetQueue::finish(const AssetId& id,std::vector<uint8_t> bytes) {
     return false;
   }
   it->second.header=header;
+  DecodedMeshGeometry geometry;
+  if(decode_mesh_high_lod(bytes,header,geometry)) {
+    it->second.geometry=std::move(geometry);
+    it->second.state=MeshDownloadState::DecodedReady;
+  } else it->second.state=MeshDownloadState::HeaderReady;
   it->second.bytes=std::move(bytes);
-  it->second.state=MeshDownloadState::HeaderReady;
   return true;
 }
 void MeshAssetQueue::fail(const AssetId& id,bool retryable) {
@@ -59,6 +63,7 @@ MeshQueueStats MeshAssetQueue::stats() const {
       case MeshDownloadState::Queued:++result.queued;break;
       case MeshDownloadState::InFlight:++result.in_flight;break;
       case MeshDownloadState::HeaderReady:++result.header_ready;break;
+      case MeshDownloadState::DecodedReady:++result.decoded_ready;break;
       case MeshDownloadState::Failed:++result.failed;break;
     }
     result.bytes+=entry.bytes.size();
