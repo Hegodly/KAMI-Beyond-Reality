@@ -1,5 +1,7 @@
 #include "world/texture_entries.h"
 #include <cassert>
+#include <cmath>
+#include <limits>
 #include <cstdint>
 #include <vector>
 namespace {
@@ -21,11 +23,11 @@ std::vector<uint8_t> sample(bool material=true) {
   image_other[0]=0x34;
   group(te,image,0x04,image_other); // face 2 has different image UUID
   group(te,{0,127,255,0},0x0A,{255,0,0,127}); // faces 1 and 3
-  group(te,{0,0,128,63}); // S scale 1.f
+  group(te,{0,0,128,63},0x04,{0,0,0,64}); // face 2: S repeat 2
   group(te,{0,0,128,63}); // T scale 1.f
-  group(te,{0,0}); // S offset
+  group(te,{0,0},0x04,{0,64}); // face 2: +0.5 S offset
   group(te,{0,0}); // T offset
-  group(te,{0,0}); // rotation
+  group(te,{0,0},0x04,{0,32}); // face 2: +90-degree rotation
   group(te,{0}); // bump
   group(te,{0}); // media
   group(te,{0}); // glow
@@ -53,6 +55,19 @@ int main() {
   assert(result.faces[1].rgba[2]==255&&result.faces[1].rgba[3]==128);
   assert(result.faces[3].rgba==result.faces[1].rgba);
   assert(result.faces[4].rgba==result.faces[0].rgba);
+  assert(std::fabs(result.faces[0].scale_s-1.f)<0.001f);
+  assert(std::fabs(result.faces[2].scale_s-2.f)<0.001f);
+  assert(std::fabs(result.faces[2].offset_s-0.5f)<0.001f);
+  assert(std::fabs(result.faces[2].rotation-1.5707963f)<0.001f);
+  float u=0,v=0;
+  assert(kami::world::transform_texture_uv(result.faces[0],0.75f,0.5f,u,v));
+  assert(std::fabs(u-0.75f)<0.001f && std::fabs(v-0.5f)<0.001f);
+  assert(kami::world::transform_texture_uv(result.faces[2],0.75f,0.5f,u,v));
+  assert(std::fabs(u-1.0f)<0.001f && std::fabs(v-1.0f)<0.001f);
+  const float before=u;
+  assert(!kami::world::transform_texture_uv(result.faces[2],
+      std::numeric_limits<float>::quiet_NaN(),0.2f,u,v));
+  assert(u==before);
   assert(result.faces[0].has_legacy_material);
   assert(result.faces[0].legacy_material_id[3]==1);
   auto older=sample(false);
