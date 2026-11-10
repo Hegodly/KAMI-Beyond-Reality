@@ -2,6 +2,7 @@
 #include "region.h"
 #include <cstdint>
 #include <vector>
+namespace kami::sl { struct Packet; }
 namespace kami::world {
 struct TerrainPatch;
 struct TerrainMesh;
@@ -40,6 +41,7 @@ public:
   bool sample_world_height(float meters_x, float meters_y, float& elevation) const;
   bool min_max_received_heights(float& low, float& high) const;
   bool apply_land_layer(const uint8_t* bytes,size_t size);
+  bool apply_land_packet(const kami::sl::Packet& packet);
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
