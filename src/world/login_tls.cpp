@@ -27,7 +27,7 @@ bool post_login_xml(const std::string& body,std::string& response,std::string& e
   if (!request.handle){error="Could not create secure login request";return false;}
   DWORD disable=WINHTTP_DISABLE_REDIRECTS;
   WinHttpSetOption(request,WINHTTP_OPTION_DISABLE_FEATURE,&disable,sizeof(disable));
-  if (!WinHttpSendRequest(request,L"Content-Type: text/xml; charset=utf-8\r\n",
+  if (!WinHttpSendRequest(request,L"Content-Type: text/xml\r\n",
       static_cast<DWORD>(-1L),const_cast<char*>(body.data()),static_cast<DWORD>(body.size()),
       static_cast<DWORD>(body.size()),0) || !WinHttpReceiveResponse(request,nullptr)) {
     const DWORD code=GetLastError();
