@@ -36,6 +36,7 @@ bool validate_mesh(const TerrainMesh& mesh);
 TerrainMesh make_indexed_mesh(const std::vector<float>& positions,
                               const std::vector<uint32_t>& indices);
 bool set_mesh_colors(TerrainMesh& mesh, const std::vector<float>& rgb);
+bool offset_mesh_indices(TerrainMesh& mesh, uint32_t offset);
 TerrainMesh make_terrain_mesh(const Heightfield& heights);
 Heightfield make_demo_heightfield(uint32_t side = 129);
 }
