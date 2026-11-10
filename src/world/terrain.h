@@ -33,6 +33,7 @@ public:
   size_t renderable_cells() const;
   float renderable_coverage() const;
   bool apply_patch_if_new(const TerrainPatch& patch);
+  size_t missing_cells() const;
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
