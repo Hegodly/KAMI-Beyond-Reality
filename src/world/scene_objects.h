@@ -2,6 +2,7 @@
 #include "lludp.h"
 #include "terrain.h"
 #include "texture_entries.h"
+#include "texture_asset_queue.h"
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -57,6 +58,7 @@ public:
   size_t renderable_prims() const;
   size_t objects_with_face_colors() const;
   size_t unique_texture_references() const;
+  std::vector<AssetId> referenced_texture_ids() const;
   size_t total_objects() const {return objects_.size();}
   uint64_t revision() const {return revision_;}
   const SceneStats& stats() const {return stats_;}

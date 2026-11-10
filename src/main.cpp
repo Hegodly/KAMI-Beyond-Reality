@@ -25,6 +25,8 @@ std::future<kami::sl::LoginResult> login_future;
 std::unique_ptr<kami::sl::SimulatorSession> connected_session;
 std::unique_ptr<kami::world::TerrainStream> live_terrain;
 std::unique_ptr<kami::world::SceneObjects> live_objects;
+kami::world::TextureAssetQueue live_texture_assets;
+uint64_t last_texture_catalog_revision=0;
 kami::world::TerrainOnlyCapture live_land_capture;
 uint64_t live_uploaded_revision = 0;
 uint64_t live_uploaded_object_revision = 0;
@@ -81,6 +83,8 @@ void start_login() {
   connected_session.reset();
   live_terrain.reset();
   live_objects.reset();
+  live_texture_assets.clear();
+  last_texture_catalog_revision=0;
   live_land_capture.clear();
   live_uploaded_revision = 0;
   live_uploaded_object_revision = 0;
@@ -278,6 +282,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           } else {
             live_terrain=std::make_unique<kami::world::TerrainStream>(256,256);
             live_objects=std::make_unique<kami::world::SceneObjects>();
+            live_texture_assets.clear();
+            last_texture_catalog_revision=0;
             live_land_capture.clear();
             live_uploaded_object_revision=0;
             live_last_object_request_ms=0;
@@ -297,6 +303,10 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           live_objects->ingest(packet);
         },128);
         const ULONGLONG time=GetTickCount64();
+        if (live_objects->revision()!=last_texture_catalog_revision) {
+          live_texture_assets.reconcile(live_objects->referenced_texture_ids());
+          last_texture_catalog_revision=live_objects->revision();
+        }
         // Cache probes require explicit full-object requests. Send bounded
         // batches, leaving the rest queued instead of flooding the simulator.
         if(time-live_last_object_request_ms>=250) {
@@ -318,10 +328,12 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
       if (connected_session && live_terrain && live_objects && GetTickCount64()-live_last_status_ms>=1000) {
         const auto& stats=live_terrain->stats();
         const auto& objects=live_objects->stats();
-        wchar_t message[360]{};
+        const auto asset_counts=live_texture_assets.stats();
+        wchar_t message[400]{};
         swprintf_s(message,
           L"UDP: %llu | Terrain: %llu decoded | Land: %.1f%%\n"
-          L"Scene: %zu prims | %zu color entries | %zu texture IDs (not fetched)\n"
+          L"Scene: %zu prims | %zu color entries | %zu unique texture IDs\n"
+          L"Texture staging: %zu queued (not fetched) | %zu encoded | %zu failed\n"
           L"Object packets: %llu full, %llu compressed | Invalid: %llu",
           static_cast<unsigned long long>(stats.packets),
           static_cast<unsigned long long>(stats.decoded),
@@ -329,6 +341,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           live_objects->renderable_prims(),
           live_objects->objects_with_face_colors(),
           live_objects->unique_texture_references(),
+          asset_counts.queued,asset_counts.encoded_ready,asset_counts.failed,
           static_cast<unsigned long long>(objects.full_packets),
           static_cast<unsigned long long>(objects.compressed_packets),
           static_cast<unsigned long long>(objects.invalid_packets));

@@ -285,6 +285,18 @@ size_t SceneObjects::objects_with_face_colors() const {
     if(object.textures.valid)++count;
   return count;
 }
+std::vector<AssetId> SceneObjects::referenced_texture_ids() const {
+  std::set<AssetId> ids;
+  for(const auto& [key,ob]:objects_) {
+    if(!ob.textures.valid)continue;
+    for(const auto& face:ob.textures.faces) {
+      if(valid_asset_uuid(face.texture_id)) ids.insert(face.texture_id);
+      if(ids.size()>=TextureAssetQueue::max_entries)break;
+    }
+    if(ids.size()>=TextureAssetQueue::max_entries)break;
+  }
+  return {ids.begin(),ids.end()};
+}
 size_t SceneObjects::unique_texture_references() const {
   // Catalog metadata only, not fetched image pixels. Deduplicate the same
   // UUID used by many prim faces, bounded for memory and UI responsiveness.
