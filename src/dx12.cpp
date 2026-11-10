@@ -158,11 +158,12 @@ bool Dx12::set_region_terrain(const world::TerrainAssembler& terrain) {
 }
 bool Dx12::set_region_scene(const world::TerrainAssembler& terrain,
                             const world::SceneObjects* objects,
-                            const world::TextureAtlas* atlas) {
+                            const world::TextureAtlas* atlas,
+                            const world::MeshAssetQueue* meshes) {
   world::TerrainMesh mesh;
   const bool has_land=terrain.build_partial_render_mesh(mesh);
   world::TerrainMesh proxies;
-  const bool has_proxies=objects && objects->build_proxy_mesh(proxies,1000,atlas);
+  const bool has_proxies=objects && objects->build_proxy_mesh(proxies,1000,atlas,meshes);
   if (!has_land && !has_proxies) return false;
   // Append prim proxy geometry without altering actual simulator terrain.
   if(has_proxies) {
