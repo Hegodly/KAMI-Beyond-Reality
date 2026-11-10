@@ -27,6 +27,16 @@ bool TerrainAssembler::apply_patch(uint32_t x, uint32_t y, uint32_t width,
     }
   return true;
 }
+bool set_mesh_colors(TerrainMesh& mesh, const std::vector<float>& rgb) {
+  if (mesh.vertices.size() > SIZE_MAX / 3 || rgb.size() != mesh.vertices.size() * 3) return false;
+  for (float c : rgb) if (!std::isfinite(c) || c < 0.0f) return false;
+  for (size_t i = 0; i < mesh.vertices.size(); ++i) {
+    mesh.vertices[i].r = rgb[3*i];
+    mesh.vertices[i].g = rgb[3*i+1];
+    mesh.vertices[i].b = rgb[3*i+2];
+  }
+  return true;
+}
 TerrainMesh make_indexed_mesh(const std::vector<float>& positions,
                               const std::vector<uint32_t>& indices) {
   if (positions.empty() || positions.size() % 3 != 0 ||
