@@ -72,6 +72,27 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   value=next;
   return true;
 }
+bool decode_land_group(const uint8_t* bytes,size_t size,std::vector<DecodedLandPatch>& patches) {
+  if (!bytes || !size || size>65535) return false;
+  LandBitReader reader(bytes,size);
+  LandGroupHeader group;
+  if (!read_land_group_header(reader,group)) return false;
+  std::vector<DecodedLandPatch> decoded;
+  while (reader.bits_remaining()>=8) {
+    uint32_t marker=0;
+    if (!reader.peek_bits(8,marker)) return false;
+    if (marker==97) {
+      if (!reader.skip_bits(8)) return false;
+      patches=std::move(decoded);
+      return true;
+    }
+    if (decoded.size()>=1024) return false;
+    DecodedLandPatch patch;
+    if (!decode_land_patch(reader,group.patch_size,patch)) return false;
+    decoded.push_back(std::move(patch));
+  }
+  return false;
+}
 bool decode_land_patch(LandBitReader& reader,unsigned patch_size,DecodedLandPatch& patch) {
   LandPatchHeader header;
   if (!read_land_patch_header(reader,header)) return false;
