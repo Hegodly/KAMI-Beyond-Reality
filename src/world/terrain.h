@@ -27,6 +27,7 @@ public:
   bool apply_decoded_patch(const TerrainPatch& patch);
   bool ready_to_render() const;
   bool build_render_mesh(TerrainMesh& output) const;
+  bool apply_patch_batch(const std::vector<TerrainPatch>& patches);
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
