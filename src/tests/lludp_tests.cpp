@@ -16,6 +16,12 @@ int main() {
   assert(p.appended_acks.size()==1 && p.appended_acks[0]==9 && p.payload.size()==1);
   const uint8_t invalid[] = {0x80,0,0,0,4,0,0};
   assert(!parse_packet(invalid,sizeof(invalid),p));
+  const uint8_t land[] = {0,0,0,0,5,0,0xFF,0xFF,0,11,3,0,0xA1,0xB2,0xC3};
+  assert(parse_packet(land,sizeof(land),p));
+  assert(kami::sl::is_land_layer(p));
+  std::vector<uint8_t> compressed;
+  assert(kami::sl::extract_land_layer_data(p,compressed));
+  assert(compressed.size()==3 && compressed[0]==0xA1 && compressed[2]==0xC3);
   const uint8_t short_packet[] = {0,0,0};
   assert(!parse_packet(short_packet,sizeof(short_packet),p));
 }
