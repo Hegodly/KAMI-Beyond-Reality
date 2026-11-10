@@ -28,4 +28,5 @@ struct LandPatchHeader {
   uint16_t patch_id = 0;
 };
 bool read_land_patch_header(LandBitReader& reader, LandPatchHeader& header);
+bool read_land_patch_end(LandBitReader& reader, bool& end);
 }
