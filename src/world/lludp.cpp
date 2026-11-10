@@ -7,6 +7,11 @@ uint32_t be32(const uint8_t* p) {
          (uint32_t(p[2]) << 8) | uint32_t(p[3]);
 }
 }
+bool is_message(const Packet& packet, uint32_t expected) {
+  uint32_t actual = 0;
+  size_t offset = 0;
+  return decode_message_id(packet, actual, offset) && actual == expected;
+}
 bool decode_message_id(const Packet& packet, uint32_t& id, size_t& body_offset) {
   const auto& p = packet.payload;
   if (p.empty()) return false;
