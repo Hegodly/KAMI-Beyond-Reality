@@ -14,6 +14,9 @@ TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacin
   heights_.elevations.assign(size_t(width) * height, 0.0f);
   received_.assign(size_t(width) * height, 0);
 }
+size_t TerrainAssembler::missing_samples() const {
+  return received_.size() - received_count_;
+}
 bool TerrainAssembler::has_sample(uint32_t x, uint32_t y) const {
   return x < heights_.width && y < heights_.height &&
          received_[size_t(y) * heights_.width + x] != 0;
