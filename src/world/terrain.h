@@ -39,6 +39,7 @@ public:
   bool sample_height_bilinear(float x, float y, float& elevation) const;
   bool sample_world_height(float meters_x, float meters_y, float& elevation) const;
   bool min_max_received_heights(float& low, float& high) const;
+  bool apply_land_layer(const uint8_t* bytes,size_t size);
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
