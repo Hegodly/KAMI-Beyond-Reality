@@ -102,13 +102,14 @@ void Dx12::init(HWND hwnd) {
     {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
     {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
     {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-    {"TEXCOORD", 1, DXGI_FORMAT_R32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+    {"TEXCOORD", 1, DXGI_FORMAT_R32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+    {"TEXCOORD", 2, DXGI_FORMAT_R32_FLOAT, 0, 36, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
   };
   D3D12_GRAPHICS_PIPELINE_STATE_DESC pso{};
   pso.pRootSignature = root_signature.Get();
   pso.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
   pso.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
-  pso.InputLayout = {inputs, 4};
+  pso.InputLayout = {inputs, 5};
   pso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
   pso.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
   pso.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
@@ -205,7 +206,7 @@ bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
     if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
         !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b) ||
         !std::isfinite(v.u) || !std::isfinite(v.v) ||
-        !std::isfinite(v.texture_mix)) return false;
+        !std::isfinite(v.texture_mix) || !std::isfinite(v.alpha)) return false;
   }
   if (mesh.indices.size() % 3 != 0) return false;
   for (uint32_t i : mesh.indices) if (i >= mesh.vertices.size()) return false;
