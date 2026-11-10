@@ -33,6 +33,11 @@ int main() {
   LandPatchHeader patch;
   assert(read_land_patch_header(patch_reader,patch));
   assert(patch.quant_wbits==0x28 && patch.dc_offset==1.0f && patch.range==16);
+  const uint8_t marker_bytes[]={97,0};
+  LandBitReader marker_reader(marker_bytes,sizeof(marker_bytes));
+  bool ended=false;
+  assert(read_land_patch_end(marker_reader,ended) && ended);
+  assert(read_land_patch_end(marker_reader,ended) && !ended);
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
