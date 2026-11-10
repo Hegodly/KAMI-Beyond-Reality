@@ -1,4 +1,5 @@
 #include "world/terrain.h"
+#include "world/lludp.h"
 #include "world/region_protocol.h"
 #include <cassert>
 #include <cmath>
@@ -8,6 +9,9 @@ int main() {
   TerrainAssembler terrain(4,4);
   const uint8_t empty_land_layer[]={0,0,16,0x4c,97};
   assert(!terrain.apply_land_layer(empty_land_layer,sizeof(empty_land_layer)));
+  kami::sl::Packet unrelated;
+  unrelated.payload={0x12,0x34};
+  assert(!terrain.apply_land_packet(unrelated));
   assert(!terrain.complete());
   assert(terrain.received_samples()==0);
   assert(terrain.missing_samples()==16);
