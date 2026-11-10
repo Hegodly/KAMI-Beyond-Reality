@@ -111,6 +111,9 @@ bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
     if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
         !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b)) return false;
   for (auto i : source.indices) if (i >= source.vertices.size()) return false;
+  if (!destination.vertices.empty() || !destination.indices.empty()) {
+    if (!validate_mesh(destination)) return false;
+  }
   const auto offset = static_cast<uint32_t>(destination.vertices.size());
   destination.vertices.insert(destination.vertices.end(), source.vertices.begin(), source.vertices.end());
   destination.indices.reserve(destination.indices.size() + source.indices.size());
