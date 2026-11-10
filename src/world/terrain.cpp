@@ -1,5 +1,6 @@
 #include "terrain.h"
 #include <cmath>
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
 namespace kami::world {
@@ -12,6 +13,11 @@ TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacin
   heights_.spacing = spacing;
   heights_.elevations.assign(size_t(width) * height, 0.0f);
   received_.assign(size_t(width) * height, 0);
+}
+void TerrainAssembler::reset() {
+  std::fill(received_.begin(), received_.end(), uint8_t{0});
+  std::fill(heights_.elevations.begin(), heights_.elevations.end(), 0.0f);
+  received_count_ = 0;
 }
 float TerrainAssembler::completion_ratio() const {
   return received_.empty() ? 0.0f :
