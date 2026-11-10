@@ -53,6 +53,7 @@ of existing SL objects. Object meshes, PBR materials, textures, child-link
 transforms, avatar bodies and vegetation remain unsupported. The number of
 received and displayed prim proxies appears in the DX12 title bar.
 
-The cache-miss request path is best-effort; full UDP reliable-resend support
-and asset-fault recovery have not been implemented yet. Do not mistake
+Cache-miss requests now have bounded, acknowledged UDP retries. Complete
+reliability for the rest of the simulator protocol, re-requesting missing
+assets and asset-fault recovery have not been implemented yet. Do not mistake
 a successful CI build for a successful live-object or inventory test.

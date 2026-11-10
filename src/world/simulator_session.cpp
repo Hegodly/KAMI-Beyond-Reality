@@ -93,6 +93,26 @@ std::vector<uint8_t> make_agent_update(const AuthenticatedSession& s,uint32_t se
   }
   return out;
 }
+std::vector<uint32_t> acknowledged_packet_sequences(const Packet& packet) {
+  std::vector<uint32_t> sequences=packet.appended_acks;
+  const auto& bytes=packet.payload;
+  // The official simulator PacketAck fixed-frequency message uses a
+  // variable block of little-endian sequence numbers. Appended ACKs use
+  // network order and are already parsed by parse_packet().
+  if(bytes.size()>=5 && bytes[0]==0xFF && bytes[1]==0xFF &&
+     bytes[2]==0xFF && bytes[3]==0xFB) {
+    const size_t count=bytes[4];
+    if(count<=64 && bytes.size()==5+4*count) {
+      for(size_t i=0;i<count;++i) {
+        const size_t p=5+i*4;
+        uint32_t sequence=0;
+        for(int k=0;k<4;++k)sequence|=uint32_t(bytes[p+k])<<(8*k);
+        sequences.push_back(sequence);
+      }
+    }
+  }
+  return sequences;
+}
 std::vector<uint8_t> make_request_multiple_objects(const AuthenticatedSession& s,
                                                   uint32_t sequence,
                                                   const std::vector<uint32_t>& ids) {
@@ -134,6 +154,8 @@ bool SimulatorSession::connect(const AuthenticatedSession& s) {
 size_t SimulatorSession::poll(const Receiver& receiver, size_t limit) {
   if (!receiver) return 0;
   return transport_.poll([&](const Packet& packet,const MessageId& id) {
+    for(uint32_t ack:acknowledged_packet_sequences(packet))
+      pending_.erase(ack);
     if ((packet.flags & 0x40u)!=0) {
       auto ack=make_packet_ack(next_sequence_++,packet.sequence);
       transport_.send(ack.data(),ack.size());
@@ -146,19 +168,38 @@ size_t SimulatorSession::poll(const Receiver& receiver, size_t limit) {
   },limit);
 }
 bool SimulatorSession::request_objects(const std::vector<uint32_t>& ids) {
-  if(!active_session_)return false;
-  const auto packet=make_request_multiple_objects(active_,next_sequence_++,ids);
-  return !packet.empty()&&transport_.send(packet.data(),packet.size());
+  if(!active_session_||pending_.size()>=128)return false;
+  const uint32_t sequence=next_sequence_++;
+  auto packet=make_request_multiple_objects(active_,sequence,ids);
+  if(packet.empty()||!transport_.send(packet.data(),packet.size()))
+    return false;
+  pending_.emplace(sequence,PendingRequest{
+    std::move(packet),static_cast<uint64_t>(GetTickCount64()),1});
+  return true;
 }
 void SimulatorSession::tick() {
   if (!active_session_) return;
   const uint64_t now=GetTickCount64();
+  unsigned resent=0;
+  for(auto it=pending_.begin();it!=pending_.end();) {
+    auto& item=it->second;
+    if(now>=item.sent_ms && now-item.sent_ms>=750 && resent<8) {
+      if(item.attempts>=4) {it=pending_.erase(it);continue;}
+      if(transport_.send(item.datagram.data(),item.datagram.size())) {
+        item.sent_ms=now;
+        ++item.attempts;
+        ++resent;
+      }
+    }
+    ++it;
+  }
   if (last_agent_update_ms_ && now-last_agent_update_ms_<150) return;
   const auto bytes=make_agent_update(active_,next_sequence_++);
   if (!bytes.empty() && transport_.send(bytes.data(),bytes.size()))
     last_agent_update_ms_=now;
 }
 void SimulatorSession::disconnect() {
+  pending_.clear();
   transport_.close();
   next_sequence_=3;
   last_agent_update_ms_=0;

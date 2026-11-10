@@ -52,4 +52,15 @@ int main() {
   assert(kami::sl::make_request_multiple_objects(s,7,{}).empty());
   assert(kami::sl::make_request_multiple_objects(s,7,{0}).empty());
   assert(kami::sl::make_request_multiple_objects(s,7,std::vector<uint32_t>(65,1)).empty());
+  auto sample_ack=kami::sl::make_packet_ack(8,0x11223344);
+  kami::sl::Packet received_ack;
+  assert(kami::sl::parse_packet(sample_ack.data(),sample_ack.size(),received_ack));
+  auto acked=kami::sl::acknowledged_packet_sequences(received_ack);
+  assert(acked.size()==1 && acked[0]==0x11223344);
+  received_ack.appended_acks.push_back(1234);
+  acked=kami::sl::acknowledged_packet_sequences(received_ack);
+  assert(acked.size()==2 && acked[0]==1234 && acked[1]==0x11223344);
+  received_ack.payload.pop_back(); // malformed fixed PacketAck must be ignored
+  acked=kami::sl::acknowledged_packet_sequences(received_ack);
+  assert(acked.size()==1 && acked[0]==1234);
 }

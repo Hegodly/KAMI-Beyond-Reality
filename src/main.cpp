@@ -301,7 +301,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         // batches, leaving the rest queued instead of flooding the simulator.
         if(time-live_last_object_request_ms>=250) {
           auto missing=live_objects->take_cache_misses(32);
-          if(!missing.empty())connected_session->request_objects(missing);
+          if(!missing.empty() && !connected_session->request_objects(missing))
+            live_objects->requeue_cache_misses(missing);
           live_last_object_request_ms=time;
         }
         if ((live_terrain->revision()!=live_uploaded_revision ||

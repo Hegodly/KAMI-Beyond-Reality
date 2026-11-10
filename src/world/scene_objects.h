@@ -41,6 +41,7 @@ public:
   const SceneStats& stats() const {return stats_;}
   const SceneObject* get(uint32_t local_id) const;
   std::vector<uint32_t> take_cache_misses(size_t limit=32);
+  void requeue_cache_misses(const std::vector<uint32_t>& ids);
   void reset();
 private:
   std::unordered_map<uint32_t,SceneObject> objects_;

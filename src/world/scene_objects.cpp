@@ -163,6 +163,11 @@ std::vector<uint32_t> SceneObjects::take_cache_misses(size_t limit) {
   stats_.requested_cache_misses+=ids.size();
   return ids;
 }
+void SceneObjects::requeue_cache_misses(const std::vector<uint32_t>& ids) {
+  for(uint32_t id:ids)
+    if(id!=0 && !objects_.contains(id)&&missing_.size()<8192)
+      missing_.insert(id);
+}
 bool SceneObjects::ingest(const kami::sl::Packet& packet) {
   uint32_t id=0;size_t offset=0;
   if(!kami::sl::decode_message_id(packet,id,offset))return false;
