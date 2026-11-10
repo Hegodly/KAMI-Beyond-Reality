@@ -72,6 +72,18 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   value=next;
   return true;
 }
+bool decode_land_patch(LandBitReader& reader,unsigned patch_size,DecodedLandPatch& patch) {
+  LandPatchHeader header;
+  if (!read_land_patch_header(reader,header)) return false;
+  std::vector<int32_t> coefficients;
+  if (!decode_land_patch_coefficients(reader,patch_size,header,coefficients)) return false;
+  std::vector<float> heights;
+  if (!reconstruct_land_patch(coefficients,header,patch_size,heights)) return false;
+  uint32_t x=0,y=0;
+  if (!decode_land_patch_coordinates(header.patch_id,patch_size,x,y)) return false;
+  patch={x,y,patch_size,std::move(heights)};
+  return true;
+}
 bool reconstruct_land_patch(const std::vector<int32_t>& coefficients,const LandPatchHeader& header,unsigned patch_size,std::vector<float>& heights) {
   std::vector<float> transformed;
   return inverse_land_dct(coefficients,patch_size,transformed) &&
