@@ -37,6 +37,9 @@ int main() {
   float low=0,high=0;
   assert(terrain.min_max_received_heights(low,high));
   assert(low==1 && high==4);
+  assert(terrain.patch_received(0,0,2,2));
+  assert(!terrain.patch_received(0,0,3,3));
+  assert(!terrain.patch_received(3,3,2,2));
   p.heights={5,6,7,8};
   assert(terrain.apply_patch_if_new(p));
   assert(terrain.sample_height(0,0,elevation) && elevation==5);
