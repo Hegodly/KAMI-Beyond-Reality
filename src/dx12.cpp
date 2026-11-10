@@ -230,6 +230,7 @@ void Dx12::sync() {
   if (!queue || !fence) return;
   auto value = ++fence_value;
   ok(queue->Signal(fence.Get(), value));
+  if (fence->GetCompletedValue() == UINT64_MAX) throw std::runtime_error("DX12 device removed");
   if (fence->GetCompletedValue() < value) {
     ok(fence->SetEventOnCompletion(value, event_handle));
     WaitForSingleObject(event_handle, INFINITE);
