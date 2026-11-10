@@ -196,16 +196,18 @@ bool build_face(const Submesh& s,TerrainMesh& out) {
   return true;
 }
 }
-bool decode_mesh_high_lod(const std::vector<uint8_t>& asset,
-                          const MeshAssetHeader& header,
-                          DecodedMeshGeometry& result) {
-  if(!header.high.present||header.header_bytes>asset.size()||
-     header.high.offset>asset.size()-header.header_bytes||
-     header.high.size>asset.size()-header.header_bytes-header.high.offset)
+static bool decode_mesh_lod_block(const std::vector<uint8_t>& asset,
+                                  const MeshAssetHeader& header,
+                                  const MeshLodBlock& block,
+                                  MeshLodQuality quality,
+                                  DecodedMeshGeometry& result) {
+  if(!block.present||header.header_bytes>asset.size()||
+     block.offset>asset.size()-header.header_bytes||
+     block.size>asset.size()-header.header_bytes-block.offset)
     return false;
-  const size_t start=header.header_bytes+header.high.offset;
+  const size_t start=header.header_bytes+block.offset;
   std::vector<uint8_t> plain;
-  if(!inflate_lod(asset.data()+start,header.high.size,plain))return false;
+  if(!inflate_lod(asset.data()+start,block.size,plain))return false;
   size_t pos=0;
   constexpr char preamble[]="<?llsd/binary?>\n";
   if(plain.size()>=sizeof(preamble)-1 &&
@@ -230,7 +232,24 @@ bool decode_mesh_high_lod(const std::vector<uint8_t>& asset,
   }
   if(!r.next(tag)||tag!=']'||r.pos!=r.size||geometry.vertices==0)
     return false;
+  geometry.quality=quality;
   result=std::move(geometry);
   return true;
+}
+bool decode_mesh_high_lod(const std::vector<uint8_t>& asset,
+                          const MeshAssetHeader& header,
+                          DecodedMeshGeometry& result) {
+  return decode_mesh_lod_block(asset,header,header.high,MeshLodQuality::High,result);
+}
+bool decode_mesh_best_lod(const std::vector<uint8_t>& asset,
+                          const MeshAssetHeader& header,
+                          DecodedMeshGeometry& result) {
+  if(decode_mesh_lod_block(asset,header,header.high,MeshLodQuality::High,result))
+    return true;
+  if(decode_mesh_lod_block(asset,header,header.medium,MeshLodQuality::Medium,result))
+    return true;
+  if(decode_mesh_lod_block(asset,header,header.low,MeshLodQuality::Low,result))
+    return true;
+  return decode_mesh_lod_block(asset,header,header.lowest,MeshLodQuality::Lowest,result);
 }
 }
