@@ -209,7 +209,10 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           login_future.wait_for(std::chrono::milliseconds(0))==std::future_status::ready) {
         auto outcome=login_future.get();
         if (!outcome.authenticated) {
-          SetWindowTextW(status_text,L"Login denied or extra verification required.");
+          std::string detail=outcome.error.empty() ? "Second Life rejected login without a reason." : outcome.error;
+          if (detail.size()>180) detail.resize(180);
+          std::wstring wide(detail.begin(),detail.end());
+          SetWindowTextW(status_text,wide.c_str());
         } else {
           connected_session=std::make_unique<kami::sl::SimulatorSession>();
           if (!connected_session->connect(outcome.session)) {
