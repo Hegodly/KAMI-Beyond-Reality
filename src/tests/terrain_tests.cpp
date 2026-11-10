@@ -6,6 +6,8 @@
 int main() {
   using namespace kami::world;
   TerrainAssembler terrain(4,4);
+  const uint8_t empty_land_layer[]={0,0,16,0x4c,97};
+  assert(!terrain.apply_land_layer(empty_land_layer,sizeof(empty_land_layer)));
   assert(!terrain.complete());
   assert(terrain.received_samples()==0);
   assert(terrain.missing_samples()==16);
