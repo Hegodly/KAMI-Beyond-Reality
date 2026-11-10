@@ -33,6 +33,9 @@ bool read_field(const uint8_t* data,size_t length,size_t& pos,
       if(flags&(uint64_t(1)<<i))
         std::memcpy(output[i].data(),data+pos,width);
     pos+=width;
+    // The last material-UUID field produced by LLPrimitive::packTEField
+    // is not zero terminated, even if it contains exception values.
+    if(last && pos==length)return true;
   }
 }
 bool nonzero_uuid(const std::array<uint8_t,16>& value) {
