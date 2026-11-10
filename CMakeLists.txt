@@ -22,4 +22,7 @@ FetchContent_MakeAvailable(openjpeg)
 if(NOT TARGET openjp2)
   message(FATAL_ERROR "OpenJPEG openjp2 target is unavailable")
 endif()
+# OpenJPEG's CMake otherwise sends executables into its own bin folder.
+# Keep KAMI's published Windows artifact path stable.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/src")
 add_subdirectory(src)
