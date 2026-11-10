@@ -188,6 +188,22 @@ int main() {
   assert(std::fabs(painted.vertices[0].g-64.f/255.f)<0.001f);
   assert(std::fabs(painted.vertices[12].r-0.f)<0.001f);
   assert(std::fabs(painted.vertices[12].g-1.f)<0.001f);
+  // A partial compressed update must not erase the validated color and
+  // shape of a previous full update.
+  assert(colored.ingest(make_compressed(404)));
+  assert(colored.get(404)->textures.valid);
+  assert(colored.get(404)->shape.valid);
+  kami::world::TerrainMesh retained;
+  assert(colored.build_proxy_mesh(retained));
+  assert(retained.vertices.size()==36);
+  assert(std::fabs(retained.vertices[12].g-1.f)<0.001f);
+  // Even a framed but malformed texture field must never poison a
+  // previously validated texture entry.
+  auto broken_te=te;
+  broken_te.pop_back();
+  assert(colored.ingest(make_full(404,0x10,0x01,0,broken_te)));
+  assert(colored.get(404)->textures.valid);
+  assert(colored.get(404)->textures.faces[2].rgba[1]==255);
   assert(colored.ingest(make_kill(404)));
   assert(colored.ingest(make_compressed(405,0,9,0,0x01,te)));
   const auto* compressed_color=colored.get(405);
