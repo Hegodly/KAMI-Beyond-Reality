@@ -15,6 +15,7 @@ public:
   bool set_world_mesh(const world::TerrainMesh& mesh);
   bool set_region_terrain(const world::TerrainAssembler& terrain);
   bool showing_recorded_terrain() const { return recorded_terrain; }
+  void prepare_live_region() { recorded_terrain = false; }
   ~Dx12();
 private:
   void sync();

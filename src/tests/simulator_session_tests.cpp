@@ -23,4 +23,16 @@ int main() {
   assert(ack[6]==0xFF && ack[7]==0xFF && ack[8]==0xFF && ack[9]==0xFB);
   assert(ack[10]==1 && ack[11]==0x44 && ack[12]==0x33 &&
          ack[13]==0x22 && ack[14]==0x11);
+  auto reply=kami::sl::make_region_handshake_reply(s,5);
+  assert(reply.size()==46 && reply[9]==0x95);
+  assert(reply[10]==1 && reply[26]==2);
+  auto update=kami::sl::make_agent_update(s,6);
+  kami::sl::Packet decoded;
+  assert(kami::sl::parse_packet(update.data(),update.size(),decoded));
+  assert((decoded.flags & 0x80u)!=0);
+  uint32_t update_id=0;
+  size_t offset=0;
+  assert(kami::sl::decode_message_id(decoded,update_id,offset));
+  assert(update_id==4 && offset==1 && decoded.payload.size()==115);
+  assert(decoded.payload[1]==s.agent_id[0] && decoded.payload[17]==s.session_id[0]);
 }

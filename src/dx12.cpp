@@ -156,7 +156,7 @@ bool Dx12::set_region_terrain(const world::TerrainAssembler& terrain) {
   if (!terrain.build_partial_render_mesh(mesh)) return false;
   if (!set_world_mesh(mesh)) return false;
   float low[3]{}, high[3]{};
-  if (world::mesh_bounds(mesh, low, high)) {
+  if (!recorded_terrain && world::mesh_bounds(mesh, low, high)) {
     camera_x = 0.5f * (low[0] + high[0]);
     camera_y = high[1] + std::max(8.0f, 0.2f * (high[0] - low[0]));
     camera_z = low[2] - std::max(15.0f, 0.3f * (high[2] - low[2]));

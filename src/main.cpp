@@ -22,6 +22,8 @@ HWND password_input = nullptr;
 std::future<kami::sl::LoginResult> login_future;
 std::unique_ptr<kami::sl::SimulatorSession> connected_session;
 std::unique_ptr<kami::world::TerrainStream> live_terrain;
+uint64_t live_uploaded_revision = 0;
+ULONGLONG live_last_upload_ms = 0;
 HWND status_text = nullptr;
 std::vector<HWND> ui_controls;
 HFONT ui_font = nullptr;
@@ -69,6 +71,8 @@ void start_login() {
   if (connected_session) connected_session->disconnect();
   connected_session.reset();
   live_terrain.reset();
+  live_uploaded_revision = 0;
+  live_last_upload_ms = 0;
   SetWindowTextW(status_text,L"Connecting securely to the official Second Life login server...");
   login_future=std::async(std::launch::async,
     [credentials=std::move(credentials)]() mutable {
@@ -213,6 +217,9 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             SetWindowTextW(status_text,L"Login accepted; simulator circuit connection failed.");
           } else {
             live_terrain=std::make_unique<kami::world::TerrainStream>(256,256);
+            live_uploaded_revision=0;
+            live_last_upload_ms=0;
+            renderer.prepare_live_region();
             SetWindowTextW(status_text,L"Authenticated. Waiting for simulator terrain packets...");
           }
         }
@@ -223,14 +230,12 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
                                     const kami::sl::MessageId&) {
           live_terrain->ingest_packet(packet);
         },128);
-        static uint64_t uploaded_revision=0;
-        static ULONGLONG last_upload_ms=0;
         const ULONGLONG time=GetTickCount64();
-        if (live_terrain->revision()!=uploaded_revision &&
-            time-last_upload_ms>=200 &&
+        if (live_terrain->revision()!=live_uploaded_revision &&
+            time-live_last_upload_ms>=200 &&
             renderer.set_region_terrain(live_terrain->terrain())) {
-          uploaded_revision=live_terrain->revision();
-          last_upload_ms=time;
+          live_uploaded_revision=live_terrain->revision();
+          live_last_upload_ms=time;
           show_demo(window);
         }
       }
