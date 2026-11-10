@@ -154,7 +154,17 @@ void Dx12::init(HWND hwnd) {
 bool Dx12::set_region_terrain(const world::TerrainAssembler& terrain) {
   world::TerrainMesh mesh;
   if (!terrain.build_partial_render_mesh(mesh)) return false;
-  return set_world_mesh(mesh);
+  if (!set_world_mesh(mesh)) return false;
+  float low[3]{}, high[3]{};
+  if (world::mesh_bounds(mesh, low, high)) {
+    camera_x = 0.5f * (low[0] + high[0]);
+    camera_y = high[1] + std::max(8.0f, 0.2f * (high[0] - low[0]));
+    camera_z = low[2] - std::max(15.0f, 0.3f * (high[2] - low[2]));
+    yaw = 0.0f;
+    pitch = -0.25f;
+  }
+  recorded_terrain = true;
+  return true;
 }
 bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
   if (!device || !world::validate_mesh(mesh) || mesh.vertices.empty() || mesh.indices.empty() ||
@@ -301,8 +311,9 @@ void Dx12::frame() {
   static ULONGLONG last_title = 0;
   if (now - last_title > 250 && window_handle) {
     wchar_t title[256]{};
-    swprintf_s(title, L"KAMI DX12 | %u FPS | WASD/Arrows move, Shift sprint, Q/E fly | Camera: %.1f, %.1f, %.1f",
-               measured_fps, camera_x, camera_y, camera_z);
+    swprintf_s(title, L"KAMI DX12 [%s] | %u FPS | WASD/Arrows, Shift, Q/E | Camera: %.1f, %.1f, %.1f",
+               recorded_terrain ? L"Recorded terrain" : L"Demo", measured_fps,
+               camera_x, camera_y, camera_z);
     SetWindowTextW(window_handle, title);
     last_title = now;
   }
