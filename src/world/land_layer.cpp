@@ -72,6 +72,14 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   value=next;
   return true;
 }
+bool decode_land_patch_coordinates(uint16_t patch_id,unsigned patch_size,uint32_t& x,uint32_t& y) {
+  if (patch_size!=16 && patch_size!=32) return false;
+  const uint32_t patch_x=patch_id & 0x1fu;
+  const uint32_t patch_y=(patch_id>>5)&0x1fu;
+  x=patch_x*patch_size;
+  y=patch_y*patch_size;
+  return true;
+}
 bool decode_land_patch_coefficients(LandBitReader& reader,unsigned patch_size,const LandPatchHeader& header,std::vector<int32_t>& coefficients) {
   const unsigned word_bits=unsigned(header.quant_wbits & 0x0f)+2u;
   return decode_land_coefficients(reader,patch_size,word_bits,coefficients);
