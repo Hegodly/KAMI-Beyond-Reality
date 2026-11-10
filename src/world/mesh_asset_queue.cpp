@@ -39,7 +39,7 @@ bool MeshAssetQueue::finish(const AssetId& id,std::vector<uint8_t> bytes) {
   }
   it->second.header=header;
   DecodedMeshGeometry geometry;
-  if(decode_mesh_high_lod(bytes,header,geometry)) {
+  if(decode_mesh_best_lod(bytes,header,geometry)) {
     // Each compressed mesh can expand dramatically. Bound total live
     // vertex/index storage independently of compressed asset bytes.
     size_t already_decoded=0;
