@@ -29,6 +29,7 @@ TerrainMesh make_box_mesh(float x, float y, float z, float sx, float sy, float s
 TerrainMesh make_ground_plane(float size, float elevation);
 bool translate_mesh(TerrainMesh& mesh, float dx, float dy, float dz);
 bool tint_mesh(TerrainMesh& mesh, float r, float g, float b);
+bool scale_mesh(TerrainMesh& mesh, float sx, float sy, float sz);
 TerrainMesh make_terrain_mesh(const Heightfield& heights);
 Heightfield make_demo_heightfield(uint32_t side = 129);
 }
