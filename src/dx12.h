@@ -35,5 +35,10 @@ private:
   D3D12_VERTEX_BUFFER_VIEW vertex_view{};
   D3D12_VIEWPORT viewport{};
   D3D12_RECT scissor{};
+  float camera_x = 0.0f, camera_y = 5.0f, camera_z = -10.0f;
+  float yaw = 0.0f, pitch = -0.22f;
+  ULONGLONG last_tick = 0;
+  POINT previous_mouse{};
+  bool mouse_tracking = false;
 };
 }
