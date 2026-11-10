@@ -60,6 +60,7 @@ bool post_login_xml(const std::string& body,std::string& response,std::string& e
     }
     response.append(part.data(),count);
   }
-  return !response.empty();
+  if (response.empty()) { error="Second Life login server returned an empty response"; return false; }
+  return true;
 }
 }
