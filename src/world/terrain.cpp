@@ -13,6 +13,10 @@ TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacin
   heights_.elevations.assign(size_t(width) * height, 0.0f);
   received_.assign(size_t(width) * height, 0);
 }
+float TerrainAssembler::completion_ratio() const {
+  return received_.empty() ? 0.0f :
+    static_cast<float>(received_count_) / static_cast<float>(received_.size());
+}
 bool TerrainAssembler::apply_patch(uint32_t x, uint32_t y, uint32_t width,
                                     uint32_t height, const std::vector<float>& samples) {
   if (!width || !height || x >= heights_.width || y >= heights_.height ||
