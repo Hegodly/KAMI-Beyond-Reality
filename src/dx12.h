@@ -38,6 +38,8 @@ public:
     recorded_terrain = false; live_scene = true; index_count = 0;
     terrain_sample_coverage = 0.0f;
     scene_proxy_roots = 0;
+    scene_real_meshes=0;
+    scene_real_meshes=0;
   }
   void prepare_recorded_region() {
     recorded_terrain = false; live_scene = false;
@@ -90,6 +92,7 @@ private:
   float terrain_max_step = 0.0f;
   float terrain_max_patch_seam = 0.0f;
   size_t scene_proxy_roots = 0;
+  size_t scene_real_meshes = 0;
   size_t staged_encoded_textures = 0;
   size_t waiting_texture_assets = 0;
   size_t fetching_texture_assets = 0;
