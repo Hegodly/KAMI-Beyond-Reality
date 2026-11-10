@@ -24,6 +24,10 @@ int main() {
   assert(pixel(0,63,2)==255);
   assert(pixel(63,63,0)==255 && pixel(63,63,1)==255);
   assert(atlas.insert(green,two));
+  float slot=-1;
+  assert(atlas.shader_slot(red,slot) && slot==1.f);
+  assert(atlas.shader_slot(green,slot) && slot==2.f);
+  assert(!atlas.shader_slot(AssetId{},slot));
   assert(atlas.uv(green,0,0,u,v) && u>1.f/8.f&&u<2.f/8.f);
   const auto rev=atlas.revision();
   assert(atlas.insert(red,two) && atlas.size()==2&&atlas.revision()>rev);
