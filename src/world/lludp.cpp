@@ -7,6 +7,17 @@ uint32_t be32(const uint8_t* p) {
          (uint32_t(p[2]) << 8) | uint32_t(p[3]);
 }
 }
+bool decode_message_id(const Packet& packet, uint32_t& id, size_t& body_offset) {
+  const auto& p = packet.payload;
+  if (p.empty()) return false;
+  if (p[0] != 0xFF) { id = p[0]; body_offset = 1; return true; }
+  if (p.size() < 2) return false;
+  if (p[1] != 0xFF) { id = 0x100u + p[1]; body_offset = 2; return true; }
+  if (p.size() < 4) return false;
+  id = 0x10000u + (uint32_t(p[2]) << 8) + p[3];
+  body_offset = 4;
+  return true;
+}
 bool parse_packet(const uint8_t* data, size_t size, Packet& output) {
   // LLUDP fixed header: flags (1), sequence (4), extra header size (1).
   if (!data || size < 6 || size > 65535) return false;
