@@ -28,6 +28,11 @@ int main() {
   LandGroupHeader header;
   assert(read_land_group_header(header_reader,header));
   assert(header.stride==0x1234 && header.patch_size==16 && header.layer_type==0x4C);
+  const uint8_t patch_bytes[]={0x28,0x3F,0x80,0,0,0,0x10,0,0};
+  LandBitReader patch_reader(patch_bytes,sizeof(patch_bytes));
+  LandPatchHeader patch;
+  assert(read_land_patch_header(patch_reader,patch));
+  assert(patch.quant_wbits==0x28 && patch.dc_offset==1.0f && patch.range==16);
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
