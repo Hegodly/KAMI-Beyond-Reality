@@ -10,10 +10,11 @@ uint32_t be32(const uint8_t* p) {
 bool extract_land_layer_data(const Packet& packet, std::vector<uint8_t>& compressed) {
   if (!is_land_layer(packet)) return false;
   std::vector<uint8_t> body;
-  if (!extract_message_body(packet, body) || body.size() < 2) return false;
-  const size_t length = size_t(body[0]) | (size_t(body[1]) << 8);
-  if (!length || length != body.size() - 2) return false;
-  compressed.assign(body.begin() + 2, body.end());
+  if (!extract_message_body(packet, body) || body.size() < 4) return false;
+  if (body[0] != 76u) return false; // LLSurface, not wind or cloud.
+  const size_t length = size_t(body[1]) | (size_t(body[2]) << 8);
+  if (!length || length != body.size() - 3) return false;
+  compressed.assign(body.begin() + 3, body.end());
   return true;
 }
 bool is_land_layer(const Packet& packet) {
