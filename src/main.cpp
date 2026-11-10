@@ -32,6 +32,8 @@ std::unique_ptr<kami::world::SceneObjects> live_objects;
 kami::world::TextureAssetQueue live_texture_assets;
 kami::world::MeshAssetQueue live_mesh_assets;
 uint64_t last_mesh_catalog_revision=0;
+uint64_t mesh_visual_revision=0;
+uint64_t uploaded_mesh_visual_revision=0;
 kami::world::TextureAtlas live_atlas;
 uint64_t uploaded_atlas_revision=0;
 uint64_t failed_atlas_revision=0;
@@ -132,6 +134,8 @@ void start_login() {
   live_texture_assets.clear();
   live_mesh_assets.clear();
   last_mesh_catalog_revision=0;
+  mesh_visual_revision=0;
+  uploaded_mesh_visual_revision=0;
   live_atlas.clear();
   uploaded_atlas_revision=0;
   failed_atlas_revision=0;
@@ -337,6 +341,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             live_texture_assets.clear();
             live_mesh_assets.clear();
             last_mesh_catalog_revision=0;
+            mesh_visual_revision=0;
+            uploaded_mesh_visual_revision=0;
             live_atlas.clear();
             uploaded_atlas_revision=0;
             failed_atlas_revision=0;
@@ -383,9 +389,10 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         try {
           auto reply=mesh_future.get();
           if(reply.generation==world_generation && connected_session) {
-            if(reply.success)
-              live_mesh_assets.finish(reply.id,std::move(reply.bytes));
-            else
+            if(reply.success) {
+              if(live_mesh_assets.finish(reply.id,std::move(reply.bytes)))
+                ++mesh_visual_revision;
+            } else
               live_mesh_assets.fail(reply.id,true);
           }
         } catch(const std::exception&) {
@@ -519,13 +526,15 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         }
         if ((live_terrain->revision()!=live_uploaded_revision ||
              live_objects->revision()!=live_uploaded_object_revision ||
+             mesh_visual_revision!=uploaded_mesh_visual_revision ||
              (live_atlas.revision()==uploaded_atlas_revision &&
               live_atlas.revision()!=uploaded_atlas_revision_for_scene)) &&
             time-live_last_upload_ms>=350 &&
             renderer.set_region_scene(live_terrain->terrain(),
-                                      live_objects.get(),&live_atlas)) {
+                                      live_objects.get(),&live_atlas,&live_mesh_assets)) {
           live_uploaded_revision=live_terrain->revision();
           live_uploaded_object_revision=live_objects->revision();
+          uploaded_mesh_visual_revision=mesh_visual_revision;
           uploaded_atlas_revision_for_scene=live_atlas.revision();
           live_last_upload_ms=time;
           show_demo(window);
@@ -541,7 +550,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           L"UDP: %llu | Terrain: %llu decoded | Land: %.1f%%\n"
           L"Scene: %zu prims | %zu color entries | %zu unique texture IDs\n"
           L"Textures: %zu queued | %zu fetching | %zu J2K encoded | %zu RGBA decoded | %zu failed\n"
-          L"Mesh assets: %zu objects | %zu queued | %zu fetching | %zu headers validated | %zu failed\n"
+          L"Mesh assets: %zu objects | %zu queued | %zu fetching | %zu geometry decoded | %zu header only | %zu failed\n"
           L"Object packets: %llu full, %llu compressed | Invalid: %llu",
           static_cast<unsigned long long>(stats.packets),
           static_cast<unsigned long long>(stats.decoded),
@@ -552,7 +561,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           asset_counts.queued,asset_counts.in_flight,
           asset_counts.encoded_ready,live_atlas.size(),asset_counts.failed,
           live_objects->objects_with_mesh_asset(),
-          mesh_counts.queued,mesh_counts.in_flight,mesh_counts.header_ready,mesh_counts.failed,
+          mesh_counts.queued,mesh_counts.in_flight,
+          mesh_counts.decoded_ready,mesh_counts.header_ready,mesh_counts.failed,
           static_cast<unsigned long long>(objects.full_packets),
           static_cast<unsigned long long>(objects.compressed_packets),
           static_cast<unsigned long long>(objects.invalid_packets));
