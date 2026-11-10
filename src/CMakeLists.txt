@@ -18,6 +18,6 @@ add_executable(kami_terrain_tests tests/terrain_tests.cpp world/terrain.cpp worl
 target_include_directories(kami_terrain_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME terrain_streaming_and_partial_rendering COMMAND kami_terrain_tests)
 
-add_executable(kami_land_layer_tests tests/land_layer_tests.cpp world/land_layer.cpp)
+add_executable(kami_land_layer_tests tests/land_layer_tests.cpp world/land_layer.cpp world/region_protocol.cpp)
 target_include_directories(kami_land_layer_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME land_layer_bitstream COMMAND kami_land_layer_tests)
