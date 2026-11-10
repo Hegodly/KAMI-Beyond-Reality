@@ -37,3 +37,12 @@ add_executable(kami_login_tests tests/login_tests.cpp world/login_protocol.cpp w
 target_include_directories(kami_login_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(kami_login_tests PRIVATE ws2_32 winhttp bcrypt ole32 oleaut32 iphlpapi)
 add_test(NAME secure_login_protocol COMMAND kami_login_tests)
+
+# Simulator-compatible fixture: little-endian headers, consecutive patches,
+# zigzag dequantization, zero-coding and an actual non-flat decoded surface.
+add_executable(kami_real_wire_terrain_tests
+  tests/terrain_wire_format_tests.cpp
+  world/terrain_stream.cpp world/terrain.cpp world/land_layer.cpp
+  world/region_protocol.cpp world/lludp.cpp)
+target_include_directories(kami_real_wire_terrain_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME real_second_life_layer_wire_format COMMAND kami_real_wire_terrain_tests)
