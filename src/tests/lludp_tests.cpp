@@ -22,6 +22,8 @@ int main() {
   std::vector<uint8_t> compressed;
   assert(kami::sl::extract_land_layer_data(p,compressed));
   assert(compressed.size()==3 && compressed[0]==0xA1 && compressed[2]==0xC3);
+  p.payload = {0xFF,0xFF,0,11,4,0,0xA1,0xB2,0xC3};
+  assert(!kami::sl::extract_land_layer_data(p,compressed));
   const uint8_t short_packet[] = {0,0,0};
   assert(!parse_packet(short_packet,sizeof(short_packet),p));
 }
