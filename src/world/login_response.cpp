@@ -93,7 +93,7 @@ bool parse_login_response(const std::string& xml, LoginResult& result) {
       auto it=properties.find(key);
       return it==properties.end()?std::string():it->second;
     };
-    if (get("login")!="true") {
+    if (get("login")!="true" && get("login")!="1") {
       result.error=get("message");
       if (result.error.empty()) result.error="Login was not accepted";
       parsed=true;
