@@ -43,6 +43,7 @@ struct DecodedLandPatch {
   std::vector<float> heights;
 };
 bool decode_land_patch(LandBitReader& reader,unsigned patch_size,DecodedLandPatch& patch);
+bool decode_land_group_to_world(const uint8_t* bytes,size_t size,uint32_t width,uint32_t height,std::vector<kami::world::TerrainPatch>& patches);
 bool land_patch_to_world(const DecodedLandPatch& source, kami::world::TerrainPatch& target);
 bool decode_land_group_for_region(const uint8_t* bytes,size_t size,uint32_t width,uint32_t height,std::vector<DecodedLandPatch>& patches);
 bool land_group_within_region(const std::vector<DecodedLandPatch>& patches,uint32_t region_width,uint32_t region_height);
