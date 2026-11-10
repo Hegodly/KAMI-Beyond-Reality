@@ -85,6 +85,9 @@ int main() {
   std::vector<DecodedLandPatch> decoded_group;
   assert(decode_land_group(empty_group,sizeof(empty_group),decoded_group));
   assert(decoded_group.empty());
+  std::vector<kami::world::TerrainPatch> world_patches;
+  assert(decode_land_group_to_world(empty_group,sizeof(empty_group),256,256,world_patches));
+  assert(world_patches.empty());
   assert(decode_land_group_for_region(empty_group,sizeof(empty_group),256,256,decoded_group));
   const uint8_t missing_terminator[]={0,0,16,0x4c};
   assert(!decode_land_group(missing_terminator,sizeof(missing_terminator),decoded_group));
