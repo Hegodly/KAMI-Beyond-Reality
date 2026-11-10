@@ -72,6 +72,10 @@ std::string make_login_request(const LoginCredentials& credentials) {
     return std::string("<member><name>")+name+"</name><value><string>"+
       xml_escape(content)+"</string></value></member>";
   };
+  auto integer=[](const char* name,int content) {
+    return std::string("<member><name>")+name+"</name><value><int>"+
+      std::to_string(content)+"</int></value></member>";
+  };
   std::string out="<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
     "<methodCall><methodName>login_to_simulator</methodName><params>"
     "<param><value><struct>";
@@ -80,12 +84,28 @@ std::string make_login_request(const LoginCredentials& credentials) {
   out+=value("version","0.1.0")+value("platform","Win");
   out+=value("id0","00000000-0000-0000-0000-000000000000");
   out+=value("mac",hardware_identity_for_login());
-  out+=value("agree_to_tos","false")+value("read_critical","false");
+  // The official viewer sends these as XML-RPC numeric values, not strings.
+  out+=integer("agree_to_tos",0)+integer("read_critical",0);
+  out+=integer("address_size",64)+integer("last_exec_event",0);
+  out+=integer("last_exec_duration",0)+integer("extended_errors",1);
+  out+=value("last_exec_session_id","00000000-0000-0000-0000-000000000000");
+  out+=value("host_id","");
   // Both fields must be present for an MFA-capable third-party viewer.
   out+=value("token",credentials.token)+value("mfa_hash",credentials.mfa_hash);
-  out+="<member><name>options</name><value><array><data>"
-       "<value><string>adult_compliant</string></value>"
-       "</data></array></value></member></struct></value></param></params></methodCall>";
+  out+="<member><name>options</name><value><array><data>";
+  for (const char* option : {
+    "inventory-root", "inventory-skeleton", "inventory-lib-root",
+    "inventory-lib-owner", "inventory-skel-lib", "gestures",
+    "display_names", "event_categories", "event_notifications",
+    "classified_categories", "adult_compliant", "buddy-list",
+    "newuser-config", "ui-config", "max-agent-groups",
+    "map-server-url", "login-flags", "global-textures"
+  }) {
+    out+="<value><string>";
+    out+=option;
+    out+="</string></value>";
+  }
+  out+="</data></array></value></member></struct></value></param></params></methodCall>";
   return out;
 }
 LoginResult login_to_second_life(const LoginCredentials& credentials) {
