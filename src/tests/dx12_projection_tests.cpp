@@ -9,7 +9,7 @@ int main() {
   assert(std::strstr(kami::terrain_dx12_shader,
     "mul(float4(input.position, 1.0), view_projection)") != nullptr);
   assert(std::strstr(kami::terrain_dx12_shader,
-    "atlas_texture.Sample(atlas_sampler, input.uv)") != nullptr);
+    "atlas_texture.Sample(atlas_sampler, atlas_uv)") != nullptr);
   ID3DBlob* vs=nullptr;
   ID3DBlob* ps=nullptr;
   ID3DBlob* errors=nullptr;
