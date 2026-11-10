@@ -6,7 +6,7 @@
 namespace kami::sl {
 LandBitReader::LandBitReader(const uint8_t* bytes,size_t size):bytes_(bytes),size_(size){}
 size_t LandBitReader::bits_remaining() const {
-  return bytes_ && size_ <= SIZE_MAX / 8 && bit_position_ <= size_*8 ? size_*8-bit_position_ : 0;
+  return bytes_ && bit_position_ <= size_*8 ? size_*8-bit_position_ : 0;
 }
 bool LandBitReader::read_float32(float& value) {
   uint32_t raw=0;
@@ -241,7 +241,7 @@ bool read_land_group_header(LandBitReader& reader,LandGroupHeader& header) {
   uint32_t stride=0,size=0,type=0;
   if (!reader.read_bits(16,stride) || !reader.read_bits(8,size) ||
       !reader.read_bits(8,type)) return false;
-  if (size!=16 && size!=32) return false;
+  if ((size!=16 && size!=32) || type!=0x4c) return false;
   header={static_cast<uint16_t>(stride),static_cast<uint8_t>(size),static_cast<uint8_t>(type)};
   return true;
 }
