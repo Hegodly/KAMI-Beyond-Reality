@@ -40,8 +40,20 @@ bool MeshAssetQueue::finish(const AssetId& id,std::vector<uint8_t> bytes) {
   it->second.header=header;
   DecodedMeshGeometry geometry;
   if(decode_mesh_high_lod(bytes,header,geometry)) {
-    it->second.geometry=std::move(geometry);
-    it->second.state=MeshDownloadState::DecodedReady;
+    // Each compressed mesh can expand dramatically. Bound total live
+    // vertex/index storage independently of compressed asset bytes.
+    size_t already_decoded=0;
+    for(const auto& [key,entry]:entries_) {
+      already_decoded+=entry.geometry.vertices*sizeof(TerrainVertex);
+      already_decoded+=entry.geometry.triangles*3*sizeof(uint32_t);
+    }
+    const size_t requested=geometry.vertices*sizeof(TerrainVertex)+
+      geometry.triangles*3*sizeof(uint32_t);
+    if(already_decoded<=max_decoded_geometry_bytes &&
+       requested<=max_decoded_geometry_bytes-already_decoded) {
+      it->second.geometry=std::move(geometry);
+      it->second.state=MeshDownloadState::DecodedReady;
+    } else it->second.state=MeshDownloadState::HeaderReady;
   } else it->second.state=MeshDownloadState::HeaderReady;
   it->second.bytes=std::move(bytes);
   return true;
