@@ -246,6 +246,15 @@ void Dx12::frame() {
     resize(width, height);
   }
   const ULONGLONG now = GetTickCount64();
+  static ULONGLONG fps_start = now;
+  static UINT fps_frames = 0;
+  static UINT measured_fps = 0;
+  ++fps_frames;
+  if (now - fps_start >= 1000) {
+    measured_fps = static_cast<UINT>(fps_frames * 1000ULL / (now - fps_start));
+    fps_frames = 0;
+    fps_start = now;
+  }
   float dt = last_tick ? std::min(0.05f, static_cast<float>(now - last_tick) * 0.001f) : 0.016f;
   last_tick = now;
   const float speed = ((keys[VK_SHIFT]) ? 24.0f : 10.0f) * dt;
@@ -260,8 +269,8 @@ void Dx12::frame() {
   static ULONGLONG last_title = 0;
   if (now - last_title > 250 && window_handle) {
     wchar_t title[256]{};
-    swprintf_s(title, L"KAMI | WASD/Arrows move, Shift sprint, Q/E fly | Camera: %.1f, %.1f, %.1f",
-               camera_x, camera_y, camera_z);
+    swprintf_s(title, L"KAMI DX12 | %u FPS | WASD/Arrows move, Shift sprint, Q/E fly | Camera: %.1f, %.1f, %.1f",
+               measured_fps, camera_x, camera_y, camera_z);
     SetWindowTextW(window_handle, title);
     last_title = now;
   }
