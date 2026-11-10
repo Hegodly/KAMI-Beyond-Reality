@@ -37,6 +37,7 @@ public:
   bool patch_received(uint32_t x, uint32_t y, uint32_t width, uint32_t height) const;
   bool any_renderable_cells() const;
   bool sample_height_bilinear(float x, float y, float& elevation) const;
+  bool sample_world_height(float meters_x, float meters_y, float& elevation) const;
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
