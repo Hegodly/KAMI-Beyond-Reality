@@ -12,6 +12,7 @@ public:
   bool skip_bits(size_t count);
   bool align_to_byte();
   bool read_u8(uint8_t& value);
+  bool read_u16(uint16_t& value);
   size_t bits_remaining() const;
   size_t bit_position() const { return bit_position_; }
 private:
