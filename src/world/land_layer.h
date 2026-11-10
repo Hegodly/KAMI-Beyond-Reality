@@ -36,5 +36,6 @@ struct LandPatchHeader {
 };
 bool read_land_patch_header(LandBitReader& reader, LandPatchHeader& header);
 bool read_land_patch_end(LandBitReader& reader, bool& end);
+bool decode_land_patch_coefficients(LandBitReader& reader, unsigned patch_size, const LandPatchHeader& header, std::vector<int32_t>& coefficients);
 bool decode_land_coefficients(LandBitReader& reader, unsigned patch_size, unsigned word_bits, std::vector<int32_t>& coefficients);
 }
