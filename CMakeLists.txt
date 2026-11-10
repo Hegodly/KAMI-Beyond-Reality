@@ -14,8 +14,10 @@ set(BUILD_CODEC OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(openjpeg
   GIT_REPOSITORY https://github.com/uclouvain/openjpeg.git
-  GIT_TAG v2.5.4
-  GIT_SHALLOW TRUE)
+  # Security: v2.5.4 omits upstream decoder bounds fix 91d08b11.
+  # This later pinned commit also includes the encoder overflow correction.
+  GIT_TAG 839936aa33eb8899bbbd80fda02796bb65068951
+  GIT_SHALLOW FALSE)
 FetchContent_MakeAvailable(openjpeg)
 if(NOT TARGET openjp2)
   message(FATAL_ERROR "OpenJPEG openjp2 target is unavailable")
