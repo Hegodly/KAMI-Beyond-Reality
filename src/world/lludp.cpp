@@ -7,6 +7,9 @@ uint32_t be32(const uint8_t* p) {
          (uint32_t(p[2]) << 8) | uint32_t(p[3]);
 }
 }
+bool is_land_layer(const Packet& packet) {
+  return is_message(packet, land_layer_message_id);
+}
 bool extract_message_body(const Packet& packet, std::vector<uint8_t>& body) {
   uint32_t id = 0;
   size_t offset = 0;
