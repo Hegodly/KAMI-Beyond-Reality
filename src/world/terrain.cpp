@@ -16,6 +16,17 @@ TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacin
   heights_.elevations.assign(size_t(width) * height, 0.0f);
   received_.assign(size_t(width) * height, 0);
 }
+bool TerrainAssembler::sample_height_bilinear(float x,float y,float& elevation) const {
+  if (!std::isfinite(x) || !std::isfinite(y) || x < 0 || y < 0 ||
+      x >= float(heights_.width-1) || y >= float(heights_.height-1)) return false;
+  const auto ix = static_cast<uint32_t>(x), iy = static_cast<uint32_t>(y);
+  float a,b,c,d;
+  if (!sample_height(ix,iy,a) || !sample_height(ix+1,iy,b) ||
+      !sample_height(ix,iy+1,c) || !sample_height(ix+1,iy+1,d)) return false;
+  const float fx=x-float(ix), fy=y-float(iy);
+  elevation=(a*(1-fx)+b*fx)*(1-fy)+(c*(1-fx)+d*fx)*fy;
+  return std::isfinite(elevation);
+}
 bool TerrainAssembler::sample_height(uint32_t x, uint32_t y, float& elevation) const {
   if (!has_sample(x, y)) return false;
   elevation = heights_.elevations[size_t(y) * heights_.width + x];
