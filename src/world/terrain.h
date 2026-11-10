@@ -32,6 +32,7 @@ public:
   bool build_partial_render_mesh(TerrainMesh& output) const;
   size_t renderable_cells() const;
   float renderable_coverage() const;
+  bool apply_patch_if_new(const TerrainPatch& patch);
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
