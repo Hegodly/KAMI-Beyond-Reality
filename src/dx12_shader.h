@@ -12,6 +12,7 @@ inline constexpr const char* terrain_dx12_shader = R"(
       float3 color : COLOR;
       float2 uv : TEXCOORD0;
       float texture_mix : TEXCOORD1;
+      float alpha : TEXCOORD2;
     };
     struct VSOutput {
       float4 position : SV_POSITION;
@@ -19,6 +20,7 @@ inline constexpr const char* terrain_dx12_shader = R"(
       float3 world_position : TEXCOORD0;
       float2 uv : TEXCOORD1;
       float texture_mix : TEXCOORD2;
+      float alpha : TEXCOORD3;
     };
     VSOutput VSMain(VSInput input) {
       VSOutput output;
@@ -29,6 +31,7 @@ inline constexpr const char* terrain_dx12_shader = R"(
       output.world_position = input.position;
       output.uv = input.uv;
       output.texture_mix = input.texture_mix;
+      output.alpha = input.alpha;
       return output;
     }
     float4 PSMain(VSOutput input) : SV_TARGET {
@@ -44,15 +47,18 @@ inline constexpr const char* terrain_dx12_shader = R"(
       // A zero slot represents untextured geometry. Slots 1..64 select
       // one of the 8x8 decoded atlas images. Keep UVs unwrapped until
       // the pixel stage: vertex-level frac would break repeated walls.
-      float3 sampled = float3(1.0, 1.0, 1.0);
+      float4 sampled = float4(1.0, 1.0, 1.0, 1.0);
       if (input.texture_mix > 0.5) {
         float tile = floor(input.texture_mix - 0.5);
         float2 cell = float2(fmod(tile, 8.0), floor(tile / 8.0));
         float2 tiled_uv = frac(input.uv);
         float2 atlas_uv = (cell * 64.0 + 0.5 + tiled_uv * 63.0) / 512.0;
-        sampled = atlas_texture.Sample(atlas_sampler, atlas_uv).rgb;
+        sampled = atlas_texture.Sample(atlas_sampler, atlas_uv);
       }
-      float3 albedo = input.color * sampled;
+      // Respect transparent holes in mesh foliage and alpha-masked prims.
+      // Semi-transparent surface blending/sorting needs a separate pass.
+      clip(input.alpha * sampled.a - 0.025);
+      float3 albedo = input.color * sampled.rgb;
       float3 lit = albedo * lighting;
       float3 color = lerp(lit, sky, distance_fog * 0.72);
       color = color / (1.0 + color);
