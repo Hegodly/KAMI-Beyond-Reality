@@ -68,6 +68,10 @@ int main() {
   assert(!decode_land_coefficients(invalid_size,16,0,coefficients));
   LandBitReader quantized_zeros(all_zero_coefficients,sizeof(all_zero_coefficients));
   assert(decode_land_patch_coefficients(quantized_zeros,16,patch,coefficients));
+  uint32_t patch_x=0,patch_y=0;
+  assert(decode_land_patch_coordinates(3u|(2u<<5),16,patch_x,patch_y));
+  assert(patch_x==48 && patch_y==32);
+  assert(!decode_land_patch_coordinates(0,8,patch_x,patch_y));
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
