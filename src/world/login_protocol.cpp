@@ -79,7 +79,7 @@ std::string make_login_request(const LoginCredentials& credentials) {
   out+=value("start",credentials.start)+value("channel","KAMI Beyond Reality");
   out+=value("version","0.1.0")+value("platform","Win");
   out+=value("id0","00000000-0000-0000-0000-000000000000");
-  out+=value("mac","00:00:00:00:00:00");
+  out+=value("mac",hardware_identity_for_login());
   out+=value("agree_to_tos","false")+value("read_critical","false");
   // Both fields must be present for an MFA-capable third-party viewer.
   out+=value("token",credentials.token)+value("mfa_hash",credentials.mfa_hash);
