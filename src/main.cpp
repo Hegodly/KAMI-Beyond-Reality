@@ -321,15 +321,16 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         wchar_t message[360]{};
         swprintf_s(message,
           L"UDP: %llu | Terrain: %llu decoded | Land: %.1f%%\n"
-          L"Scene: %zu prims | Object packets: %llu full, %llu compressed\n"
-          L"Cache probes: %llu | Invalid objects: %llu",
+          L"Scene: %zu prims | %zu color entries | %zu texture IDs (not fetched)\n"
+          L"Object packets: %llu full, %llu compressed | Invalid: %llu",
           static_cast<unsigned long long>(stats.packets),
           static_cast<unsigned long long>(stats.decoded),
           live_terrain->terrain().completion_ratio()*100.0f,
           live_objects->renderable_prims(),
+          live_objects->objects_with_face_colors(),
+          live_objects->unique_texture_references(),
           static_cast<unsigned long long>(objects.full_packets),
           static_cast<unsigned long long>(objects.compressed_packets),
-          static_cast<unsigned long long>(objects.cached_packets),
           static_cast<unsigned long long>(objects.invalid_packets));
         SetWindowTextW(status_text,message);
         live_last_status_ms=GetTickCount64();

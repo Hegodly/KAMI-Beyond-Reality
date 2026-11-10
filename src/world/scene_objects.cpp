@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <set>
 #include <utility>
 namespace kami::world {
 namespace {
@@ -273,6 +274,27 @@ size_t SceneObjects::renderable_prims() const {
   for(const auto& [id,ob]:objects_)
     if(ob.pcode==9&&resolve_world_pose(objects_,ob,pose))++count;
   return count;
+}
+size_t SceneObjects::objects_with_face_colors() const {
+  size_t count=0;
+  for(const auto& [id,object]:objects_)
+    if(object.textures.valid)++count;
+  return count;
+}
+size_t SceneObjects::unique_texture_references() const {
+  // Catalog metadata only, not fetched image pixels. Deduplicate the same
+  // UUID used by many prim faces, bounded for memory and UI responsiveness.
+  std::set<std::array<uint8_t,16>> ids;
+  for(const auto& [id,object]:objects_) {
+    if(!object.textures.valid)continue;
+    for(const auto& face:object.textures.faces) {
+      if(std::any_of(face.texture_id.begin(),face.texture_id.end(),
+                     [](uint8_t b){return b!=0;}))
+        ids.insert(face.texture_id);
+      if(ids.size()>=4096)return ids.size();
+    }
+  }
+  return ids.size();
 }
 std::vector<uint32_t> SceneObjects::take_cache_misses(size_t limit) {
   std::vector<uint32_t> ids;
