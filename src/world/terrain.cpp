@@ -15,6 +15,14 @@ TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacin
   heights_.elevations.assign(size_t(width) * height, 0.0f);
   received_.assign(size_t(width) * height, 0);
 }
+bool TerrainAssembler::apply_patch_batch(const std::vector<TerrainPatch>& patches) {
+  if (patches.empty()) return false;
+  for (const auto& patch : patches)
+    if (!validate_patch(patch, heights_)) return false;
+  for (const auto& patch : patches)
+    if (!apply_decoded_patch(patch)) return false;
+  return true;
+}
 bool TerrainAssembler::build_render_mesh(TerrainMesh& output) const {
   if (!ready_to_render()) return false;
   output = make_terrain_mesh(heights_);
