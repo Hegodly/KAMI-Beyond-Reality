@@ -7,6 +7,13 @@ uint32_t be32(const uint8_t* p) {
          (uint32_t(p[2]) << 8) | uint32_t(p[3]);
 }
 }
+bool extract_message_body(const Packet& packet, std::vector<uint8_t>& body) {
+  uint32_t id = 0;
+  size_t offset = 0;
+  if (!decode_message_id(packet, id, offset)) return false;
+  body.assign(packet.payload.begin() + offset, packet.payload.end());
+  return true;
+}
 bool is_message(const Packet& packet, uint32_t expected) {
   uint32_t actual = 0;
   size_t offset = 0;
