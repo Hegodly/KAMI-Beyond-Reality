@@ -248,8 +248,18 @@ bool decode_land_coefficients(LandBitReader& reader,unsigned patch_size,unsigned
     if (!reader.read_bits(1,value_bit)) return false;
     if (!value_bit) break;
     uint32_t sign=0,magnitude=0;
-    if (!reader.read_bits(1,sign) ||
-        !reader.read_bits(word_bits,magnitude)) return false;
+    if (!reader.read_bits(1,sign)) return false;
+    // LLBitPack::bitUnpack writes each group of up to eight bits to
+    // successive bytes of a native little-endian integer. A 13-bit
+    // coefficient is transmitted as eight low bits then five high bits.
+    // Reading all 13 bits as a single big-endian word corrupts real land
+    // coefficients and produces kilometer-scale-looking terrain spikes.
+    for (unsigned shift=0;shift<word_bits;shift+=8) {
+      const unsigned count=std::min(8u,word_bits-shift);
+      uint32_t part=0;
+      if (!reader.read_bits(count,part)) return false;
+      magnitude|=part<<shift;
+    }
     decoded[i]=sign?-static_cast<int32_t>(magnitude):
                      static_cast<int32_t>(magnitude);
   }

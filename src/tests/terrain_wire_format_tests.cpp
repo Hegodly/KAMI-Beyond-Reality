@@ -27,6 +27,16 @@ struct BitWriter {
     put(patch_id&255u,8);
     put((patch_id>>8)&3u,2);
   }
+  void coefficient(int magnitude,unsigned width) {
+    // Mirror LLBitPack::bitPack on Windows: sign code followed by the
+    // native little-endian coefficient split into 8-bit groups.
+    put(magnitude<0?7u:6u,3);
+    const uint32_t absvalue=static_cast<uint32_t>(magnitude<0?-magnitude:magnitude);
+    for (unsigned shift=0;shift<width;shift+=8) {
+      const unsigned count=(width-shift<8)?width-shift:8u;
+      put((absvalue>>shift)&((1u<<count)-1u),count);
+    }
+  }
 };
 std::vector<uint8_t> zerocode(const std::vector<uint8_t>& bytes) {
   std::vector<uint8_t> result;
@@ -80,4 +90,31 @@ int main() {
   kami::world::TerrainMesh mesh;
   assert(stream.build_mesh(mesh));
   assert(!mesh.indices.empty());
+
+  // Regression: Second Life uses 9-13 bit coefficient fields on real land.
+  // These are synthetic constant-height patches; NO user-captured terrain
+  // or region data is included in repository tests.
+  BitWriter wide;
+  wide.u16le(264);wide.put(16,8);wide.put('L',8);
+  wide.header(0x8b,0x41a00000u,1,(2u<<5)|2u); // offset 20m; 13 bits
+  wide.coefficient(0x1234,13); // bytes 0x34, then five bits 0x12
+  wide.put(2,2); // EOB
+  wide.header(0x8b,0x41a00000u,1,(3u<<5)|2u);
+  wide.coefficient(-1000,13);
+  wide.put(2,2);
+  wide.header(0x87,0x41a00000u,1,(4u<<5)|2u); // 9 bits
+  wide.coefficient(340,9);
+  wide.put(2,2);
+  wide.put(97,8);
+  std::vector<kami::sl::DecodedLandPatch> wide_patches;
+  assert(kami::sl::decode_land_group(wide.bytes.data(),wide.bytes.size(),wide_patches));
+  assert(wide_patches.size()==3);
+  const float expected[]={20.5f+4660.f/16384.f,
+                          20.5f-1000.f/16384.f,
+                          20.5f+340.f/16384.f};
+  for (size_t i=0;i<3;++i) {
+    assert(wide_patches[i].x==(i+2)*16 && wide_patches[i].y==32);
+    for (float elevation:wide_patches[i].heights)
+      assert(std::fabs(elevation-expected[i])<0.002f);
+  }
 }
