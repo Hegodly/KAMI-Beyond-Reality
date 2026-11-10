@@ -474,6 +474,7 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit,
               v.g=float(appearance.rgba[1])/255.f;
               v.b=float(appearance.rgba[2])/255.f;
               v.alpha=float(appearance.rgba[3])/255.f;
+              v.fullbright=(appearance.bump_fullbright&0x20u)?1.f:0.f;
               float transformed_u=0,transformed_v=0,slot=0;
               if(atlas &&
                  transform_texture_uv(appearance,v.u,v.v,
