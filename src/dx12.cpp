@@ -128,8 +128,24 @@ void Dx12::init(HWND hwnd) {
   pso.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
   pso.DSVFormat = DXGI_FORMAT_D32_FLOAT;
   ok(device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pipeline)));
-  // Shared mesh path: later simulator patches can feed this same renderer.
-  auto mesh = world::make_terrain_mesh(world::make_demo_heightfield(129));
+  if (!set_world_mesh(world::make_terrain_mesh(world::make_demo_heightfield(129))))
+    throw std::runtime_error("Failed to initialize world mesh");
+  D3D12_DESCRIPTOR_HEAP_DESC dsv_desc{};
+  dsv_desc.NumDescriptors = 1;
+  dsv_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+  ok(device->CreateDescriptorHeap(&dsv_desc, IID_PPV_ARGS(&dsv_heap)));
+  create_depth(desc.Width, desc.Height);
+}
+bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
+  if (!device || mesh.vertices.empty() || mesh.indices.empty() ||
+      mesh.vertices.size() > UINT_MAX / sizeof(world::TerrainVertex) ||
+      mesh.indices.size() > UINT_MAX / sizeof(uint32_t)) return false;
+  for (const auto& v : mesh.vertices) {
+    if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
+        !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b)) return false;
+  }
+  for (uint32_t i : mesh.indices) if (i >= mesh.vertices.size()) return false;
+  sync();
   const auto& vertices = mesh.vertices;
   const auto& indices = mesh.indices;
   index_count = static_cast<UINT>(indices.size());
@@ -162,11 +178,7 @@ void Dx12::init(HWND hwnd) {
   index_view.BufferLocation = index_buffer->GetGPUVirtualAddress();
   index_view.SizeInBytes = static_cast<UINT>(resource.Width);
   index_view.Format = DXGI_FORMAT_R32_UINT;
-  D3D12_DESCRIPTOR_HEAP_DESC dsv_desc{};
-  dsv_desc.NumDescriptors = 1;
-  dsv_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-  ok(device->CreateDescriptorHeap(&dsv_desc, IID_PPV_ARGS(&dsv_heap)));
-  create_depth(desc.Width, desc.Height);
+  return true;
 }
 void Dx12::create_depth(UINT width, UINT height) {
   depth_buffer.Reset();

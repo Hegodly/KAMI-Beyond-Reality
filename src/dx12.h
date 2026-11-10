@@ -3,12 +3,16 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <wrl/client.h>
+#include "world/terrain.h"
 namespace kami {
 class Dx12 {
 public:
   void init(HWND hwnd);
   void frame();
   void key(UINT key, bool pressed);
+  // Uploads a decoded world mesh to the existing DX12 draw path.
+  // Call from the render thread, after init().
+  bool set_world_mesh(const world::TerrainMesh& mesh);
   ~Dx12();
 private:
   void sync();
