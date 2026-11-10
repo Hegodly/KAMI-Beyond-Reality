@@ -29,6 +29,9 @@ bool TerrainAssembler::apply_patch_batch(const std::vector<TerrainPatch>& patche
     if (!apply_patch_if_new(patch)) return false;
   return true;
 }
+bool TerrainAssembler::any_renderable_cells() const {
+  return renderable_cells() != 0;
+}
 size_t TerrainAssembler::missing_cells() const {
   const size_t total = size_t(heights_.width-1)*(heights_.height-1);
   return total - renderable_cells();
