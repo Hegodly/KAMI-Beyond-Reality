@@ -69,7 +69,7 @@ bool basic_primitive_shape_supported(const PrimitiveShape& p) {
     return profile==5; // full, uncut sphere approximation
   return false;
 }
-bool tint_primitive_proxy(const SceneObject& ob,TerrainMesh& mesh) {
+bool tint_primitive_proxy(const SceneObject& ob,TerrainMesh& mesh,const TextureAtlas* atlas) {
   if(!ob.textures.valid || mesh.vertices.empty())return false;
   // For a validated, uncut square/linear volume the generated box index
   // stream has six contiguous groups (one per face). Duplicating vertices
@@ -91,6 +91,18 @@ bool tint_primitive_proxy(const SceneObject& ob,TerrainMesh& mesh) {
         if(index>=mesh.vertices.size())return false;
         auto v=mesh.vertices[index];
         v.r=r;v.g=g;v.b=b;
+        if(atlas) {
+          // Cube face pairs are stored in fixed order: +/-Z, +/-X, +/-Y.
+          // The face-local coordinates are normalized before atlas mapping.
+          const float sx=ob.sx>0?ob.sx:1.f;
+          const float sy=ob.sy>0?ob.sy:1.f;
+          const float sz=ob.sz>0?ob.sz:1.f;
+          const float local_u=(face<2?(v.x/sx+0.5f):
+                                face<4?(v.z/sy+0.5f):(v.x/sx+0.5f));
+          const float local_v=(face<4?(v.y/sz+0.5f):(v.z/sy+0.5f));
+          if(atlas->uv(ob.textures.faces[face].texture_id,
+                       local_u,local_v,v.u,v.v))v.texture_mix=1.f;
+        }
         colored.indices.push_back(static_cast<uint32_t>(colored.vertices.size()));
         colored.vertices.push_back(v);
       }

@@ -255,7 +255,8 @@ bool validate_mesh(const TerrainMesh& mesh) {
       mesh.indices.size() > UINT32_MAX) return false;
   for (const auto& v : mesh.vertices)
     if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
-        !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b)) return false;
+        !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b) ||
+        !std::isfinite(v.u) || !std::isfinite(v.v) || !std::isfinite(v.texture_mix)) return false;
   for (auto i : mesh.indices) if (i >= mesh.vertices.size()) return false;
   return true;
 }
@@ -267,7 +268,8 @@ bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
       destination.indices.size() > UINT32_MAX - source.indices.size()) return false;
   for (const auto& v : source.vertices)
     if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
-        !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b)) return false;
+        !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b) ||
+        !std::isfinite(v.u) || !std::isfinite(v.v) || !std::isfinite(v.texture_mix)) return false;
   for (auto i : source.indices) if (i >= source.vertices.size()) return false;
   if (!destination.vertices.empty() || !destination.indices.empty()) {
     if (!validate_mesh(destination)) return false;

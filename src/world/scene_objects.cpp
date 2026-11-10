@@ -374,7 +374,7 @@ bool SceneObjects::ingest(const kami::sl::Packet& packet) {
   }
   return true;
 }
-bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit) const {
+bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit,const TextureAtlas* atlas) const {
   TerrainMesh scene;
   size_t count=0;
   for(const auto& [id,ob]:objects_) {
@@ -382,7 +382,7 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit) const {
     SceneObject pose;
     if(!resolve_world_pose(objects_,ob,pose))continue;
     TerrainMesh prim=make_primitive_proxy(ob);
-    tint_primitive_proxy(ob,prim);
+    tint_primitive_proxy(ob,prim,atlas);
     for(auto& vertex:prim.vertices) {
       float x=vertex.x,y=vertex.z,z=vertex.y;
       rotate(pose,x,y,z);
