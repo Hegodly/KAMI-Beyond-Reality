@@ -24,6 +24,7 @@ public:
   bool has_sample(uint32_t x, uint32_t y) const;
   size_t missing_samples() const;
   bool apply_decoded_patch(const TerrainPatch& patch);
+  bool ready_to_render() const;
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
