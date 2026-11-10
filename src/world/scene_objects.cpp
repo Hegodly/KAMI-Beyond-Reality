@@ -305,6 +305,17 @@ size_t SceneObjects::renderable_prims() const {
     if(ob.pcode==9&&resolve_world_pose(objects_,ob,pose))++count;
   return count;
 }
+size_t SceneObjects::renderable_meshes(const MeshAssetQueue& assets) const {
+  size_t result=0;
+  SceneObject pose;
+  for(const auto& [id,ob]:objects_) {
+    if(!ob.mesh.valid || !resolve_world_pose(objects_,ob,pose))continue;
+    const auto* record=assets.get(ob.mesh.mesh_id);
+    if(record && record->state==MeshDownloadState::DecodedReady)
+      ++result;
+  }
+  return result;
+}
 size_t SceneObjects::objects_with_mesh_asset() const {
   size_t total=0;
   for(const auto& [id,ob]:objects_)
