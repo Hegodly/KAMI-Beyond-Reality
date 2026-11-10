@@ -42,6 +42,7 @@ struct DecodedLandPatch {
   std::vector<float> heights;
 };
 bool decode_land_patch(LandBitReader& reader,unsigned patch_size,DecodedLandPatch& patch);
+bool decode_land_group(const uint8_t* bytes,size_t size,std::vector<DecodedLandPatch>& patches);
 bool reconstruct_land_patch(const std::vector<int32_t>& coefficients, const LandPatchHeader& header, unsigned patch_size, std::vector<float>& heights);
 bool scale_land_heights(const std::vector<float>& frequency_heights, const LandPatchHeader& header, unsigned patch_size, std::vector<float>& heights);
 bool inverse_land_dct(const std::vector<int32_t>& coefficients, unsigned patch_size, std::vector<float>& samples);
