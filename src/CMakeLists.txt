@@ -14,7 +14,7 @@ target_include_directories(kami_session_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(kami_session_tests PRIVATE ws2_32)
 add_test(NAME simulator_session_handshake COMMAND kami_session_tests)
 
-add_executable(kami_terrain_tests tests/terrain_tests.cpp world/terrain.cpp world/region_protocol.cpp world/land_layer.cpp)
+add_executable(kami_terrain_tests tests/terrain_tests.cpp world/terrain.cpp world/region_protocol.cpp world/land_layer.cpp world/lludp.cpp)
 target_include_directories(kami_terrain_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME terrain_streaming_and_partial_rendering COMMAND kami_terrain_tests)
 
