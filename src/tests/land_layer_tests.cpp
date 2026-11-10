@@ -20,6 +20,9 @@ int main() {
   LandBitReader aligner(bytes,sizeof(bytes));
   assert(aligner.skip_bits(3) && aligner.align_to_byte());
   assert(aligner.bit_position()==8 && aligner.align_to_byte());
+  LandBitReader dword_reader(bytes,sizeof(bytes));
+  uint32_t dword=0;
+  assert(dword_reader.read_u32(dword) && dword==0x1234104C);
   LandBitReader word_reader(bytes,sizeof(bytes));
   uint16_t word=0;
   assert(word_reader.read_u16(word) && word==0x1234);
