@@ -19,6 +19,7 @@ int main() {
   TerrainMesh mesh;
   assert(!terrain.build_partial_render_mesh(mesh));
   assert(!terrain.build_render_mesh(mesh));
+  assert(mesh.vertices.empty() && mesh.indices.empty());
   TerrainPatch p;
   p.x=0;p.y=0;p.width=2;p.height=2;p.heights={1,2,3,4};
   assert(terrain.apply_decoded_patch(p));
