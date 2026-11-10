@@ -24,5 +24,6 @@ public:
   void disconnect();
 private:
   SimulatorTransport transport_;
+  uint32_t next_sequence_ = 3;
 };
 }

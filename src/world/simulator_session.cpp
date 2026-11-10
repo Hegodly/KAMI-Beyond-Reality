@@ -52,6 +52,7 @@ std::vector<uint8_t> make_packet_ack(uint32_t sequence, uint32_t received_sequen
 bool SimulatorSession::connect(const AuthenticatedSession& s) {
   disconnect();
   if (!valid_session(s) || !transport_.open(s.endpoint)) return false;
+  next_sequence_ = 3;
   const auto handshake = make_use_circuit_code(s,1);
   if (!transport_.send(handshake.data(),handshake.size())) {
     disconnect(); return false;
@@ -63,7 +64,14 @@ bool SimulatorSession::connect(const AuthenticatedSession& s) {
   return true;
 }
 size_t SimulatorSession::poll(const Receiver& receiver, size_t limit) {
-  return transport_.poll(receiver,limit);
+  if (!receiver) return 0;
+  return transport_.poll([&](const Packet& packet,const MessageId& id) {
+    if ((packet.flags & 0x40u)!=0) {
+      auto ack=make_packet_ack(next_sequence_++,packet.sequence);
+      transport_.send(ack.data(),ack.size());
+    }
+    receiver(packet,id);
+  },limit);
 }
-void SimulatorSession::disconnect() { transport_.close(); }
+void SimulatorSession::disconnect() { transport_.close(); next_sequence_=3; }
 }
