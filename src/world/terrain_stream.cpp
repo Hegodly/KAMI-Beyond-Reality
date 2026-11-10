@@ -3,7 +3,6 @@ namespace kami::world {
 TerrainStream::TerrainStream(uint32_t width, uint32_t height)
   : terrain_(width, height) {}
 bool TerrainStream::ingest_datagram(const uint8_t* bytes, size_t count) {
-  ++stats_.packets;
   kami::sl::Packet packet;
   if (!kami::sl::parse_packet(bytes, count, packet)) {
     ++stats_.invalid;
@@ -12,6 +11,7 @@ bool TerrainStream::ingest_datagram(const uint8_t* bytes, size_t count) {
   return ingest_packet(packet);
 }
 bool TerrainStream::ingest_packet(const kami::sl::Packet& packet) {
+  ++stats_.packets;
   if (!kami::sl::is_land_layer(packet)) {
     ++stats_.ignored;
     return false;
