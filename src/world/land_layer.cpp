@@ -28,6 +28,12 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   value=next;
   return true;
 }
+bool read_land_patch_end(LandBitReader& reader,bool& end) {
+  uint32_t marker=0;
+  if (!reader.read_bits(8,marker)) return false;
+  end=(marker==97u);
+  return true;
+}
 bool read_land_patch_header(LandBitReader& reader,LandPatchHeader& header) {
   uint32_t quant=0,dc=0,range=0,id=0;
   if (!reader.read_bits(8,quant) || !reader.read_bits(32,dc) ||
