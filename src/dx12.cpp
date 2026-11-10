@@ -134,7 +134,10 @@ void Dx12::init(HWND hwnd) {
   if (!world::append_mesh(demo_scene, world::make_box_mesh(0.0f, 2.0f, 15.0f, 5.0f, 4.0f, 5.0f)))
     throw std::runtime_error("Failed to assemble scene geometry");
   auto second_object = world::make_box_mesh(0.0f, 2.0f, 15.0f, 3.0f, 4.0f, 3.0f);
-  if (!world::translate_mesh(second_object, 9.0f, 0.0f, 0.0f) ||
+  if (!world::scale_mesh(second_object, 1.0f, 1.5f, 1.0f) ||
+      !world::rotate_mesh_y(second_object, 0.45f) ||
+      !world::tint_mesh(second_object, 0.4f, 0.7f, 1.0f) ||
+      !world::translate_mesh(second_object, 9.0f, 0.0f, 0.0f) ||
       !world::append_mesh(demo_scene, second_object))
     throw std::runtime_error("Failed to position second scene object");
   if (!set_world_mesh(demo_scene))
