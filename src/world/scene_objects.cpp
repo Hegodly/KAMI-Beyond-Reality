@@ -473,8 +473,14 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit,
               v.r=float(appearance.rgba[0])/255.f;
               v.g=float(appearance.rgba[1])/255.f;
               v.b=float(appearance.rgba[2])/255.f;
-              if(atlas && atlas->uv(appearance.texture_id,v.u,v.v,v.u,v.v))
-                v.texture_mix=1.f;
+              float transformed_u=0,transformed_v=0,slot=0;
+              if(atlas &&
+                 transform_texture_uv(appearance,v.u,v.v,
+                                      transformed_u,transformed_v) &&
+                 atlas->shader_slot(appearance.texture_id,slot)) {
+                v.u=transformed_u;v.v=transformed_v;
+                v.texture_mix=slot;
+              }
             } else {
               v.r=0.64f;v.g=0.66f;v.b=0.72f;
             }
