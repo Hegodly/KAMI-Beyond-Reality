@@ -35,6 +35,13 @@ int main(){
   assert(h.high.present&&h.high.offset==0&&h.high.size==8);
   assert(h.header_bytes+8==blob.size());
   assert(!h.medium.present);
+  // Modern SL assets may omit the deprecated binary LLSD preamble.
+  auto without_preamble=blob;
+  without_preamble.erase(without_preamble.begin(),
+    without_preamble.begin()+std::string("<?llsd/binary?>\n").size());
+  MeshAssetHeader modern;
+  assert(parse_mesh_asset_header(without_preamble,modern));
+  assert(modern.header_bytes+modern.high.size==without_preamble.size());
   const auto intact=h;
   blob.pop_back();
   assert(!parse_mesh_asset_header(blob,h));
