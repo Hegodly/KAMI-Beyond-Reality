@@ -77,6 +77,14 @@ bool TerrainAssembler::build_render_mesh(TerrainMesh& output) const {
 bool TerrainAssembler::ready_to_render() const {
   return complete() && heights_.valid();
 }
+bool TerrainAssembler::apply_patch_if_new(const TerrainPatch& patch) {
+  if (!validate_patch(patch, heights_)) return false;
+  bool all_received = true;
+  for (uint32_t y=patch.y;y<patch.y+patch.height;++y)
+    for (uint32_t x=patch.x;x<patch.x+patch.width;++x)
+      if (!has_sample(x,y)) all_received = false;
+  return all_received ? true : apply_decoded_patch(patch);
+}
 bool TerrainAssembler::apply_decoded_patch(const TerrainPatch& patch) {
   if (!validate_patch(patch, heights_)) return false;
   return apply_patch(patch.x, patch.y, patch.width, patch.height, patch.heights);
