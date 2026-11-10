@@ -1,4 +1,5 @@
 #include "scene_objects.h"
+#include "primitive_shapes.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -236,8 +237,7 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit) const {
   size_t count=0;
   for(const auto& [id,ob]:objects_) {
     if(ob.pcode!=9||ob.parent_id||count>=limit)continue;
-    const float hx=ob.sx*0.5f,hy=ob.sy*0.5f,hz=ob.sz*0.5f;
-    TerrainMesh prim=make_box_mesh(0,0,0,ob.sx,ob.sz,ob.sy);
+    TerrainMesh prim=make_primitive_proxy(ob);
     for(auto& vertex:prim.vertices) {
       float x=vertex.x,y=vertex.z,z=vertex.y;
       rotate(ob,x,y,z);
