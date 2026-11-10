@@ -31,6 +31,7 @@ std::unique_ptr<kami::world::SceneObjects> live_objects;
 kami::world::TextureAssetQueue live_texture_assets;
 kami::world::TextureAtlas live_atlas;
 uint64_t uploaded_atlas_revision=0;
+uint64_t failed_atlas_revision=0;
 uint64_t uploaded_atlas_revision_for_scene=0;
 uint64_t last_texture_catalog_revision=0;
 struct CapabilityReply {
@@ -117,6 +118,7 @@ void start_login() {
   live_texture_assets.clear();
   live_atlas.clear();
   uploaded_atlas_revision=0;
+  failed_atlas_revision=0;
   uploaded_atlas_revision_for_scene=0;
   last_texture_catalog_revision=0;
   live_land_capture.clear();
@@ -319,6 +321,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             live_texture_assets.clear();
             live_atlas.clear();
             uploaded_atlas_revision=0;
+            failed_atlas_revision=0;
             uploaded_atlas_revision_for_scene=0;
             last_texture_catalog_revision=0;
             pending_seed_cap=std::move(outcome.seed_capability);
@@ -439,13 +442,23 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             live_objects->requeue_cache_misses(missing);
           live_last_object_request_ms=time;
         }
-        if (live_atlas.revision()!=uploaded_atlas_revision) {
-          if(renderer.upload_texture_atlas(live_atlas))
-            uploaded_atlas_revision=live_atlas.revision();
+        if (live_atlas.revision()!=uploaded_atlas_revision &&
+            live_atlas.revision()!=failed_atlas_revision) {
+          try {
+            if(renderer.upload_texture_atlas(live_atlas))
+              uploaded_atlas_revision=live_atlas.revision();
+            else
+              failed_atlas_revision=live_atlas.revision();
+          } catch(const std::exception&) {
+            // Keep the last valid GPU atlas and untextured geometry visible
+            // rather than terminating the entire Second Life session.
+            failed_atlas_revision=live_atlas.revision();
+          }
         }
         if ((live_terrain->revision()!=live_uploaded_revision ||
              live_objects->revision()!=live_uploaded_object_revision ||
-             live_atlas.revision()!=uploaded_atlas_revision_for_scene) &&
+             (live_atlas.revision()==uploaded_atlas_revision &&
+              live_atlas.revision()!=uploaded_atlas_revision_for_scene)) &&
             time-live_last_upload_ms>=350 &&
             renderer.set_region_scene(live_terrain->terrain(),
                                       live_objects.get(),&live_atlas)) {

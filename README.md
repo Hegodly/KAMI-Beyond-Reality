@@ -90,9 +90,16 @@ asset IDs maximum); no files are written automatically. Invalid responses
 and unreferenced assets are discarded, and reconnects do not apply late
 responses to a different session.
 
-**This does not yet display downloaded image textures.** JPEG2000 image
-decoding, UV coordinates, GPU image uploads, transparency, and glTF/PBR
-material rendering are still missing. The title bar now displays the
-ViewerAsset capability state and encoded JPEG2000 staging counts. A
-successful CI build proves the URL rules and synthetic fixture tests,
-not that the live simulator serves this endpoint in every region.
+KAMI's texture pipeline now also includes pinned OpenJPEG decoding of
+supported JPEG2000 codestreams, a 64-slot bounded RGBA image atlas, DX12
+texture uploads, and a sampling pixel shader. Basic uncut volume box proxies
+receive face-local UVs that reference successfully decoded images. This is
+**partial texture rendering**, not full Second Life materials.
+
+Unsupported/subsampled color spaces, complex mesh topology, UV repeats and
+rotations, transparent materials, JPEG2000 streaming resolution levels, and
+glTF/PBR are still unfinished. Only the first 64 successfully decoded images
+fit in the atlas before more advanced eviction and streaming are added.
+The title bar reports capability state and JPEG2000 staging counts.
+A successful CI build proves synthetic codec/UV tests, **not** that textures
+appear on a resident's actual land. See [texture pipeline](docs/TEXTURE_PIPELINE.md).
