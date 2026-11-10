@@ -1,4 +1,5 @@
 #include "dx12.h"
+#include "world/terrain.h"
 #include <stdexcept>
 #include <d3dcompiler.h>
 #include <cstring>
@@ -107,33 +108,16 @@ void Dx12::init(HWND hwnd) {
   pso.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
   pso.DSVFormat = DXGI_FORMAT_D32_FLOAT;
   ok(device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pipeline)));
-  struct Vertex { float x, y, z, r, g, b; };
-  // Procedural terrain is a geometry pipeline milestone, NOT Second Life land.
-  constexpr int side = 129;
-  std::vector<Vertex> vertices;
-  std::vector<uint32_t> indices;
-  vertices.reserve(side * side);
-  for (int z = 0; z < side; ++z) {
-    for (int x = 0; x < side; ++x) {
-      float px = (x - 64) * 2.0f;
-      float pz = z * 2.0f - 32.0f;
-      float y = 1.2f * std::sin(px * 0.23f) * std::cos(pz * 0.19f);
-      float green = 0.28f + 0.15f * (y + 1.2f) / 2.4f;
-      vertices.push_back({px, y, pz, 0.10f, green, 0.24f});
-    }
-  }
-  for (int z = 0; z < side - 1; ++z) {
-    for (int x = 0; x < side - 1; ++x) {
-      uint32_t i = static_cast<uint32_t>(z * side + x);
-      indices.insert(indices.end(), {i, i + side, i + 1, i + 1, i + side, i + side + 1});
-    }
-  }
+  // Shared mesh path: later simulator patches can feed this same renderer.
+  auto mesh = world::make_terrain_mesh(world::make_demo_heightfield(129));
+  const auto& vertices = mesh.vertices;
+  const auto& indices = mesh.indices;
   index_count = static_cast<UINT>(indices.size());
   D3D12_HEAP_PROPERTIES upload{};
   upload.Type = D3D12_HEAP_TYPE_UPLOAD;
   D3D12_RESOURCE_DESC resource{};
   resource.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-  resource.Width = vertices.size() * sizeof(Vertex);
+  resource.Width = vertices.size() * sizeof(world::TerrainVertex);
   resource.Height = 1;
   resource.DepthOrArraySize = 1;
   resource.MipLevels = 1;
@@ -148,7 +132,7 @@ void Dx12::init(HWND hwnd) {
   vertex_buffer->Unmap(0, nullptr);
   vertex_view.BufferLocation = vertex_buffer->GetGPUVirtualAddress();
   vertex_view.SizeInBytes = static_cast<UINT>(resource.Width);
-  vertex_view.StrideInBytes = sizeof(Vertex);
+  vertex_view.StrideInBytes = sizeof(world::TerrainVertex);
   resource.Width = indices.size() * sizeof(uint32_t);
   ok(device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &resource,
     D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&index_buffer)));
