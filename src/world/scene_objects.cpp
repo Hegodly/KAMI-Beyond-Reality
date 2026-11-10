@@ -14,7 +14,11 @@ constexpr uint32_t full_id=12,compressed_id=13,cached_id=14,kill_id=16;
 struct Cursor {
   const std::vector<uint8_t>& data;
   size_t pos=0;
-  size_t remain() const {return pos<=data.size()?data.size()-pos:0;}
+  size_t boundary=SIZE_MAX;
+  size_t remain() const {
+    const size_t end=std::min(data.size(),boundary);
+    return pos<=end?end-pos:0;
+  }
   bool skip(size_t n) {if(n>remain())return false;pos+=n;return true;}
   bool u8(uint8_t& v) {if(!remain())return false;v=data[pos++];return true;}
   bool u16(uint16_t& v) {
@@ -32,6 +36,14 @@ struct Cursor {
   }
   bool vec3(float& x,float& y,float& z) {
     return f32(x)&&f32(y)&&f32(z);
+  }
+  bool cstring() {
+    const auto end=std::min(data.size(),boundary);
+    if(pos>=end)return false;
+    auto found=std::find(data.begin()+pos,data.begin()+end,uint8_t{0});
+    if(found==data.begin()+end)return false;
+    pos=static_cast<size_t>(found-data.begin())+1;
+    return true;
   }
   bool var1() {uint8_t n=0;return u8(n)&&skip(n);}
   bool var2() {uint16_t n=0;return u16(n)&&skip(n);}
@@ -170,6 +182,7 @@ bool parse_compressed(const std::vector<uint8_t>& data,size_t offset,
     uint32_t flags=0;uint16_t size=0;
     if(!c.u32(flags)||!c.u16(size)||size>c.remain())return false;
     const size_t end=c.pos+size;
+    c.boundary=end;
     // UUID, local ID, PCode, state, CRC, material, click action,
     // scale, position, rotation (xyz), special code, owner UUID.
     // See LLViewerObject::processUpdateMessage(OUT_FULL_COMPRESSED).
@@ -183,19 +196,25 @@ bool parse_compressed(const std::vector<uint8_t>& data,size_t offset,
       c.u32(special)&&c.skip(16);
     if (known && (special&0x80u)) known=c.skip(12);
     if (known && (special&0x20u)) known=c.u32(ob.parent_id);
-    // Following the fixed fields, a conventional compressed volume contains
-    // an ExtraParams count, then its 23-byte Path/Profile descriptor.
-    // Handle the common zero-extra-parameters case only. Do not guess byte
-    // offsets across optional sounds, sculpt params, particles or text.
-    // Those objects deliberately keep shape.valid=false until fully parsed.
-    if(known && c.pos<end && (special&~0x20u)==0) {
-      const size_t begin=c.pos;
+    // Mirror optional LLDataPackerBinaryBuffer flags before ExtraParams.
+    // All reads are confined to this block; a malformed string cannot
+    // consume bytes from the following simulator object.
+    constexpr uint32_t supported=0x1u|0x2u|0x4u|0x10u|0x20u|
+      0x80u|0x100u|0x200u|0x400u;
+    if(special&~supported)known=false;
+    if(known && (special&0x2u))known=c.skip(1); // tree data
+    else if(known && (special&0x1u)) {
+      uint32_t expected=0,actual=0;
+      known=c.u32(expected)&&c.u32(actual)&&actual<=c.remain()&&
+        actual<=65536&&c.skip(actual);
+    }
+    if(known && (special&0x4u))known=c.cstring()&&c.skip(4);
+    if(known && (special&0x200u))known=c.cstring();
+    if(known && c.pos<end) {
       if(c.mesh_extra_binary(ob.mesh,end) && end-c.pos>=23) {
         PrimitiveShape shape;
         if(read_shape(c,shape) && c.pos<=end) {
           ob.shape=shape;
-          // A compressed data-packer stores the TextureEntry field as
-          // a little-endian U16 length followed by its packed contents.
           if(end-c.pos>=2) {
             uint16_t count=0;
             if(c.u16(count) && count<=end-c.pos) {
@@ -209,12 +228,13 @@ bool parse_compressed(const std::vector<uint8_t>& data,size_t offset,
             }
           }
         }
-      } else c.pos=begin;
+      }
     }
     if(known && c.pos<=end && plausible(ob) && normalize_rotation(ob))
       objects.push_back(ob);
     else ++skipped;
     c.pos=end;
+    c.boundary=data.size();
   }
   return c.remain()==0;
 }
