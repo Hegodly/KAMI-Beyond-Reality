@@ -54,6 +54,12 @@ int main() {
   bool ended=false;
   assert(read_land_patch_end(marker_reader,ended) && ended);
   assert(read_land_patch_end(marker_reader,ended) && !ended);
+  const uint8_t all_zero_coefficients[64]={};
+  LandBitReader zeros(all_zero_coefficients,sizeof(all_zero_coefficients));
+  std::vector<int32_t> coefficients;
+  assert(decode_land_coefficients(zeros,16,4,coefficients));
+  assert(coefficients.size()==256);
+  for (auto c:coefficients) assert(c==0);
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
