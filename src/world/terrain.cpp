@@ -42,6 +42,19 @@ bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
   for (auto i : source.indices) destination.indices.push_back(offset + i);
   return true;
 }
+bool rotate_mesh_y(TerrainMesh& mesh, float radians) {
+  if (!std::isfinite(radians)) return false;
+  const float c = std::cos(radians), s = std::sin(radians);
+  for (const auto& v : mesh.vertices)
+    if (!std::isfinite(v.x * c + v.z * s) ||
+        !std::isfinite(-v.x * s + v.z * c)) return false;
+  for (auto& v : mesh.vertices) {
+    const float x = v.x * c + v.z * s;
+    v.z = -v.x * s + v.z * c;
+    v.x = x;
+  }
+  return true;
+}
 bool scale_mesh(TerrainMesh& mesh, float sx, float sy, float sz) {
   if (!std::isfinite(sx) || !std::isfinite(sy) || !std::isfinite(sz) ||
       sx <= 0 || sy <= 0 || sz <= 0) return false;
