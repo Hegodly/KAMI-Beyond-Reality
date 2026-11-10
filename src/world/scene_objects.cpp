@@ -333,20 +333,14 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit) const {
     SceneObject pose;
     if(!resolve_world_pose(objects_,ob,pose))continue;
     TerrainMesh prim=make_primitive_proxy(ob);
+    tint_primitive_proxy(ob,prim);
     for(auto& vertex:prim.vertices) {
       float x=vertex.x,y=vertex.z,z=vertex.y;
       rotate(pose,x,y,z);
       vertex.x=pose.x+x-127.5f;
       vertex.y=pose.z+z;
       vertex.z=pose.y+y-32.f;
-      // Use the default TE face tint only when valid. Per-face color,
-      // alpha blending, fetched textures and PBR remain separate work.
-      if(ob.textures.valid) {
-        const auto& color=ob.textures.faces[0].rgba;
-        vertex.r=float(color[0])/255.f;
-        vertex.g=float(color[1])/255.f;
-        vertex.b=float(color[2])/255.f;
-      } else {
+      if(!ob.textures.valid) {
         vertex.r=0.47f;vertex.g=0.47f;vertex.b=0.55f;
       }
     }

@@ -1,6 +1,7 @@
 #include "primitive_shapes.h"
 #include <cmath>
 #include <stdexcept>
+#include <utility>
 namespace kami::world {
 namespace {
 constexpr float pi=3.14159265358979323846f;
@@ -67,6 +68,45 @@ bool basic_primitive_shape_supported(const PrimitiveShape& p) {
   if(p.path_curve==0x20u)
     return profile==5; // full, uncut sphere approximation
   return false;
+}
+bool tint_primitive_proxy(const SceneObject& ob,TerrainMesh& mesh) {
+  if(!ob.textures.valid || mesh.vertices.empty())return false;
+  // For a validated, uncut square/linear volume the generated box index
+  // stream has six contiguous groups (one per face). Duplicating vertices
+  // prevents unrelated faces from sharing colors. Face-to-side orientation
+  // remains an approximation until full LLVolume face generation is ported.
+  const bool box=basic_primitive_shape_supported(ob.shape) &&
+      ob.shape.path_curve==0x10u && ob.shape.profile_curve==0x01u &&
+      mesh.vertices.size()==8 && mesh.indices.size()==36;
+  if(box) {
+    TerrainMesh colored;
+    colored.vertices.reserve(36);
+    colored.indices.reserve(36);
+    for(size_t face=0;face<6;++face) {
+      const auto& rgba=ob.textures.faces[face].rgba;
+      const float r=float(rgba[0])/255.f,g=float(rgba[1])/255.f,
+                  b=float(rgba[2])/255.f;
+      for(size_t i=0;i<6;++i) {
+        const uint32_t index=mesh.indices[6*face+i];
+        if(index>=mesh.vertices.size())return false;
+        auto v=mesh.vertices[index];
+        v.r=r;v.g=g;v.b=b;
+        colored.indices.push_back(static_cast<uint32_t>(colored.vertices.size()));
+        colored.vertices.push_back(v);
+      }
+    }
+    mesh=std::move(colored);
+    return true;
+  }
+  // Until the exact face topology of each prim is decoded, use the default
+  // TE tint rather than painting its faces with fabricated assignments.
+  const auto& rgba=ob.textures.faces[0].rgba;
+  for(auto& v:mesh.vertices) {
+    v.r=float(rgba[0])/255.f;
+    v.g=float(rgba[1])/255.f;
+    v.b=float(rgba[2])/255.f;
+  }
+  return true;
 }
 TerrainMesh make_primitive_proxy(const SceneObject& ob) {
   if(!basic_primitive_shape_supported(ob.shape))
