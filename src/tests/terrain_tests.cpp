@@ -23,6 +23,7 @@ int main() {
   p.x=0;p.y=0;p.width=2;p.height=2;p.heights={1,2,3,4};
   assert(terrain.apply_decoded_patch(p));
   assert(terrain.received_samples()==4);
+  assert(std::fabs(terrain.completion_ratio()-.25f)<.001f);
   assert(terrain.renderable_cells()==1);
   assert(terrain.missing_cells()==8);
   assert(std::fabs(terrain.renderable_coverage()-1.0f/9.0f)<.001f);
