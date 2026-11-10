@@ -30,12 +30,18 @@ bool post_login_xml(const std::string& body,std::string& response,std::string& e
   if (!WinHttpSendRequest(request,L"Content-Type: text/xml; charset=utf-8\r\n",
       static_cast<DWORD>(-1L),const_cast<char*>(body.data()),static_cast<DWORD>(body.size()),
       static_cast<DWORD>(body.size()),0) || !WinHttpReceiveResponse(request,nullptr)) {
-    error="Secure login request failed";return false;
+    const DWORD code=GetLastError();
+    if (code==ERROR_WINHTTP_NAME_NOT_RESOLVED) error="Login server DNS lookup failed";
+    else if (code==ERROR_WINHTTP_TIMEOUT) error="Second Life login server timed out";
+    else if (code==ERROR_WINHTTP_CANNOT_CONNECT) error="Could not establish login HTTPS connection";
+    else if (code==ERROR_WINHTTP_SECURE_FAILURE) error="Windows rejected the login server TLS certificate";
+    else error="Login HTTPS request failed (Windows error "+std::to_string(code)+")";
+    return false;
   }
   DWORD code=0,size=sizeof(code);
   if (!WinHttpQueryHeaders(request,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,
       WINHTTP_HEADER_NAME_BY_INDEX,&code,&size,WINHTTP_NO_HEADER_INDEX)||code!=200) {
-    error="Second Life login HTTP request was rejected";return false;
+    error="Second Life login HTTP returned status "+std::to_string(code);return false;
   }
   response.clear();
   for (;;) {
