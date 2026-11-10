@@ -43,6 +43,15 @@ bool normalize_rotation(SceneObject& ob) {
   if(n<0.00001f)return false;
   ob.qx/=n;ob.qy/=n;ob.qz/=n;ob.qw/=n;return true;
 }
+bool normalize_composed_rotation(SceneObject& ob) {
+  const double norm=double(ob.qx)*ob.qx+double(ob.qy)*ob.qy+
+                    double(ob.qz)*ob.qz+double(ob.qw)*ob.qw;
+  if(!std::isfinite(norm)||norm<1.e-12||norm>4.0)return false;
+  const float inverse=static_cast<float>(1.0/std::sqrt(norm));
+  ob.qx*=inverse;ob.qy*=inverse;
+  ob.qz*=inverse;ob.qw*=inverse;
+  return true;
+}
 bool plausible(const SceneObject& ob) {
   auto size=[](float v){return std::isfinite(v)&&v>0.f&&v<=64.f;};
   return ob.local_id!=0 && ob.pcode==9 &&
@@ -211,7 +220,10 @@ bool resolve_world_pose(const std::unordered_map<uint32_t,SceneObject>& all,
     result.qy=aw*child.qy-ax*child.qz+ay*child.qw+az*child.qx;
     result.qz=aw*child.qz+ax*child.qy-ay*child.qx+az*child.qw;
     result.qw=aw*child.qw-ax*child.qx-ay*child.qy-az*child.qz;
-    if(!normalize_rotation(result))return false;
+    // The sign of W matters after composing multiple link rotations.
+    // The wire-level positive-W reconstruction is only appropriate for
+    // individual compact quaternion updates, not composed quaternions.
+    if(!normalize_composed_rotation(result))return false;
   }
   return std::isfinite(result.x)&&std::isfinite(result.y)&&std::isfinite(result.z);
 }
