@@ -28,7 +28,7 @@ bool TerrainAssembler::apply_patch(uint32_t x, uint32_t y, uint32_t width,
   return true;
 }
 TerrainMesh make_terrain_mesh(const Heightfield& h) {
-  if (!h.valid() || !std::isfinite(h.spacing))
+  if (!h.valid() || !std::isfinite(h.spacing) || h.spacing <= 0.0f)
     throw std::invalid_argument("Invalid heightfield");
   TerrainMesh mesh;
   mesh.vertices.reserve(h.elevations.size());
