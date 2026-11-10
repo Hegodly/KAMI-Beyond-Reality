@@ -16,6 +16,10 @@ TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacin
   heights_.elevations.assign(size_t(width) * height, 0.0f);
   received_.assign(size_t(width) * height, 0);
 }
+bool TerrainAssembler::sample_world_height(float meters_x,float meters_y,float& elevation) const {
+  if (!std::isfinite(meters_x) || !std::isfinite(meters_y)) return false;
+  return sample_height_bilinear(meters_x/heights_.spacing,meters_y/heights_.spacing,elevation);
+}
 bool TerrainAssembler::sample_height_bilinear(float x,float y,float& elevation) const {
   if (!std::isfinite(x) || !std::isfinite(y) || x < 0 || y < 0 ||
       x >= float(heights_.width-1) || y >= float(heights_.height-1)) return false;
