@@ -17,6 +17,9 @@ int main() {
   LandBitReader empty(nullptr,0);
   assert(empty.bits_remaining()==0 && !empty.read_bits(1,v));
   assert(empty.read_bits(0,v) && v==0);
+  LandBitReader skipper(bytes,sizeof(bytes));
+  assert(skipper.skip_bits(16) && skipper.bit_position()==16);
+  assert(!skipper.skip_bits(17) && skipper.bit_position()==16);
   LandBitReader excessive(bytes,sizeof(bytes));
   assert(!excessive.read_bits(33,v));
   assert(excessive.bits_remaining()==32);
