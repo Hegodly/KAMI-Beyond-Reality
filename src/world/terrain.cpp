@@ -27,6 +27,22 @@ bool TerrainAssembler::apply_patch(uint32_t x, uint32_t y, uint32_t width,
     }
   return true;
 }
+TerrainMesh make_indexed_mesh(const std::vector<float>& positions,
+                              const std::vector<uint32_t>& indices) {
+  if (positions.empty() || positions.size() % 3 != 0 ||
+      positions.size() / 3 > UINT32_MAX || indices.empty() ||
+      indices.size() % 3 != 0) throw std::invalid_argument("Invalid indexed mesh input");
+  TerrainMesh result;
+  result.vertices.reserve(positions.size() / 3);
+  for (size_t i = 0; i < positions.size(); i += 3) {
+    if (!std::isfinite(positions[i]) || !std::isfinite(positions[i+1]) ||
+        !std::isfinite(positions[i+2])) throw std::invalid_argument("Invalid mesh position");
+    result.vertices.push_back({positions[i],positions[i+1],positions[i+2],.8f,.8f,.8f});
+  }
+  result.indices = indices;
+  if (!validate_mesh(result)) throw std::invalid_argument("Invalid mesh indices");
+  return result;
+}
 bool validate_mesh(const TerrainMesh& mesh) {
   if (mesh.vertices.empty() || mesh.indices.empty() ||
       mesh.indices.size() % 3 != 0 || mesh.vertices.size() > UINT32_MAX ||
