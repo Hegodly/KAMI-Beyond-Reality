@@ -18,5 +18,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KAMI-DX12-development
-          path: build/src/Release/KAMIViewer.exe
+          path: |
+            build/src/Release/KAMIViewer.exe
+            build/src/OpenJPEG-LICENSE.txt
           if-no-files-found: error

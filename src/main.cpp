@@ -4,6 +4,7 @@
 #include "world/scene_objects.h"
 #include "world/asset_caps.h"
 #include "world/texture_decode_wic.h"
+#include "world/texture_decode_openjpeg.h"
 #include "world/login_protocol.h"
 #include "world/simulator_session.h"
 #include <future>
@@ -415,8 +416,11 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
                   result.success=kami::world::download_encoded_texture(
                     cap,id,result.bytes);
                   if(result.success) {
-                    result.image_decoded=kami::world::decode_jpeg2000_wic(
+                    result.image_decoded=kami::world::decode_jpeg2000_openjpeg(
                       result.bytes,result.image);
+                    if(!result.image_decoded)
+                      result.image_decoded=kami::world::decode_jpeg2000_wic(
+                        result.bytes,result.image);
                   }
                 } catch(const std::exception&) {
                   result.success=false;
