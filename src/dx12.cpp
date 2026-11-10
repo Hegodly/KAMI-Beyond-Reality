@@ -133,6 +133,10 @@ void Dx12::init(HWND hwnd) {
   auto demo_scene = world::make_terrain_mesh(world::make_demo_heightfield(129));
   if (!world::append_mesh(demo_scene, world::make_box_mesh(0.0f, 2.0f, 15.0f, 5.0f, 4.0f, 5.0f)))
     throw std::runtime_error("Failed to assemble scene geometry");
+  auto second_object = world::make_box_mesh(0.0f, 2.0f, 15.0f, 3.0f, 4.0f, 3.0f);
+  if (!world::translate_mesh(second_object, 9.0f, 0.0f, 0.0f) ||
+      !world::append_mesh(demo_scene, second_object))
+    throw std::runtime_error("Failed to position second scene object");
   if (!set_world_mesh(demo_scene))
     throw std::runtime_error("Failed to initialize world mesh");
   D3D12_DESCRIPTOR_HEAP_DESC dsv_desc{};
