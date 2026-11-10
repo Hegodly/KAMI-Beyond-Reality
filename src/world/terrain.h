@@ -20,6 +20,7 @@ public:
   size_t received_samples() const { return received_count_; }
   float completion_ratio() const;
   void reset();
+  bool has_sample(uint32_t x, uint32_t y) const;
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
