@@ -42,6 +42,7 @@ struct DecodedLandPatch {
   std::vector<float> heights;
 };
 bool decode_land_patch(LandBitReader& reader,unsigned patch_size,DecodedLandPatch& patch);
+bool decode_land_group_for_region(const uint8_t* bytes,size_t size,uint32_t width,uint32_t height,std::vector<DecodedLandPatch>& patches);
 bool land_group_within_region(const std::vector<DecodedLandPatch>& patches,uint32_t region_width,uint32_t region_height);
 bool land_patch_within_region(const DecodedLandPatch& patch,uint32_t region_width,uint32_t region_height);
 bool decode_land_group(const uint8_t* bytes,size_t size,std::vector<DecodedLandPatch>& patches);
