@@ -21,7 +21,8 @@ void vec(std::vector<uint8_t>& b,float x,float y,float z){f32(b,x);f32(b,y);f32(
 void region(std::vector<uint8_t>& b){zeros(b,10);u8(b,1);}
 kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode=9,float root_z_rotation=0,uint8_t profile=255,
                                  const std::vector<uint8_t>& texture_entry={},
-                                 const std::vector<uint8_t>& mesh_extra={}) {
+                                 const std::vector<uint8_t>& mesh_extra={},
+                                 uint32_t extra_flags=0) {
   std::vector<uint8_t> b{13};region(b);u32(b,0);
   std::vector<uint8_t> content;
   zeros(content,16);u32(content,id);u8(content,pcode);u8(content,0);
@@ -29,8 +30,15 @@ kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode
   vec(content,2,4,6); // scale (SL X,Y,Z)
   vec(content,parent?5.f:128.f,parent?0.f:128.f,parent?2.f:25.f);
   vec(content,0,0,root_z_rotation); // SL quaternion xyz; w reconstructed
-  u32(content,parent?0x20u:0);zeros(content,16);
+  u32(content,(parent?0x20u:0)|extra_flags);zeros(content,16);
   if(parent)u32(content,parent);
+  if(extra_flags&0x2u)u8(content,9);
+  if(extra_flags&0x4u) {
+    content.insert(content.end(),{'T','e','x','t',0});
+    zeros(content,4);
+  }
+  if(extra_flags&0x200u)
+    content.insert(content.end(),{'m','e','d','i','a',0});
   if(profile!=255) {
     // Plain compressed volume with no extra params, followed by the
     // same 23-byte Path/Profile descriptor as ObjectUpdate.
@@ -365,24 +373,29 @@ int main() {
   assert(mesh_scene.ingest(make_compressed(1002,0,9,0,0x01,{},mesh_extra)));
   assert(mesh_scene.objects_with_mesh_asset()==2);
   assert(mesh_scene.referenced_mesh_ids().size()==1);
+  assert(mesh_scene.ingest(make_compressed(1003,0,9,0,0x01,{},
+                                          mesh_extra,0x2u|0x4u|0x200u)));
+  assert(mesh_scene.objects_with_mesh_asset()==3);
+  assert(mesh_scene.referenced_mesh_ids().size()==1);
   kami::world::MeshAssetQueue actual_meshes;
   actual_meshes.reconcile(mesh_scene.referenced_mesh_ids());
   assert(actual_meshes.take_pending(1)==mesh_ids);
   assert(actual_meshes.finish(mesh_ids[0],sample_mesh_asset()));
   assert(actual_meshes.stats().decoded_ready==1);
-  assert(mesh_scene.renderable_meshes(actual_meshes)==2);
+  assert(mesh_scene.renderable_meshes(actual_meshes)==3);
   kami::world::TerrainMesh rendered_mesh;
   assert(mesh_scene.build_proxy_mesh(rendered_mesh,1000,nullptr,&actual_meshes));
   // Two objects point to the same downloaded 3-vertex triangle asset;
   // KAMI must use actual triangles, not two 8-vertex proxy boxes.
-  assert(rendered_mesh.vertices.size()==6);
-  assert(rendered_mesh.indices.size()==6);
+  assert(rendered_mesh.vertices.size()==9);
+  assert(rendered_mesh.indices.size()==9);
   for(const auto& vertex:rendered_mesh.vertices) {
     assert(vertex.y>=22.f&&vertex.y<=28.f);
     assert(vertex.x>=-.5f&&vertex.x<=1.5f);
   }
   assert(mesh_scene.ingest(make_kill(1001)));
   assert(mesh_scene.ingest(make_kill(1002)));
+  assert(mesh_scene.ingest(make_kill(1003)));
   assert(mesh_scene.referenced_mesh_ids().empty());
   scene.reset();
   assert(scene.total_objects()==0 && scene.revision()==0);
