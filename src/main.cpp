@@ -3,6 +3,7 @@
 #include "world/terrain_stream.h"
 #include "world/scene_objects.h"
 #include "world/asset_caps.h"
+#include "world/texture_decode_wic.h"
 #include "world/login_protocol.h"
 #include "world/simulator_session.h"
 #include <future>
@@ -27,6 +28,9 @@ std::unique_ptr<kami::sl::SimulatorSession> connected_session;
 std::unique_ptr<kami::world::TerrainStream> live_terrain;
 std::unique_ptr<kami::world::SceneObjects> live_objects;
 kami::world::TextureAssetQueue live_texture_assets;
+kami::world::TextureAtlas live_atlas;
+uint64_t uploaded_atlas_revision=0;
+uint64_t uploaded_atlas_revision_for_scene=0;
 uint64_t last_texture_catalog_revision=0;
 struct CapabilityReply {
   uint64_t generation=0;
@@ -37,6 +41,8 @@ struct TextureDownload {
   uint64_t generation=0;
   kami::world::AssetId id{};
   std::vector<uint8_t> bytes;
+  kami::world::DecodedImage image;
+  bool image_decoded=false;
   bool success=false;
 };
 std::future<CapabilityReply> cap_future;
@@ -108,6 +114,9 @@ void start_login() {
   live_terrain.reset();
   live_objects.reset();
   live_texture_assets.clear();
+  live_atlas.clear();
+  uploaded_atlas_revision=0;
+  uploaded_atlas_revision_for_scene=0;
   last_texture_catalog_revision=0;
   live_land_capture.clear();
   live_uploaded_revision = 0;
@@ -307,6 +316,9 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             live_terrain=std::make_unique<kami::world::TerrainStream>(256,256);
             live_objects=std::make_unique<kami::world::SceneObjects>();
             live_texture_assets.clear();
+            live_atlas.clear();
+            uploaded_atlas_revision=0;
+            uploaded_atlas_revision_for_scene=0;
             last_texture_catalog_revision=0;
             pending_seed_cap=std::move(outcome.seed_capability);
             live_viewerasset_cap.clear();
@@ -347,10 +359,13 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         try {
           auto response=texture_future.get();
           if(response.generation==world_generation && connected_session) {
-            if(response.success)
-              live_texture_assets.finish(response.id,response.bytes);
-            else
+            if(response.success) {
+              if(live_texture_assets.finish(response.id,response.bytes) &&
+                 response.image_decoded)
+                live_atlas.insert(response.id,response.image);
+            } else {
               live_texture_assets.fail(response.id,true);
+            }
           }
         } catch(const std::exception&) {
           // A failed background request must not interrupt DX12.
@@ -399,8 +414,13 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
                 try {
                   result.success=kami::world::download_encoded_texture(
                     cap,id,result.bytes);
+                  if(result.success) {
+                    result.image_decoded=kami::world::decode_jpeg2000_wic(
+                      result.bytes,result.image);
+                  }
                 } catch(const std::exception&) {
                   result.success=false;
+                  result.image_decoded=false;
                 }
                 return result;
               });
@@ -415,12 +435,19 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             live_objects->requeue_cache_misses(missing);
           live_last_object_request_ms=time;
         }
+        if (live_atlas.revision()!=uploaded_atlas_revision) {
+          if(renderer.upload_texture_atlas(live_atlas))
+            uploaded_atlas_revision=live_atlas.revision();
+        }
         if ((live_terrain->revision()!=live_uploaded_revision ||
-             live_objects->revision()!=live_uploaded_object_revision) &&
+             live_objects->revision()!=live_uploaded_object_revision ||
+             live_atlas.revision()!=uploaded_atlas_revision_for_scene) &&
             time-live_last_upload_ms>=350 &&
-            renderer.set_region_scene(live_terrain->terrain(),live_objects.get())) {
+            renderer.set_region_scene(live_terrain->terrain(),
+                                      live_objects.get(),&live_atlas)) {
           live_uploaded_revision=live_terrain->revision();
           live_uploaded_object_revision=live_objects->revision();
+          uploaded_atlas_revision_for_scene=live_atlas.revision();
           live_last_upload_ms=time;
           show_demo(window);
         }
@@ -429,11 +456,11 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         const auto& stats=live_terrain->stats();
         const auto& objects=live_objects->stats();
         const auto asset_counts=live_texture_assets.stats();
-        wchar_t message[400]{};
+        wchar_t message[480]{};
         swprintf_s(message,
           L"UDP: %llu | Terrain: %llu decoded | Land: %.1f%%\n"
           L"Scene: %zu prims | %zu color entries | %zu unique texture IDs\n"
-          L"Texture staging: %zu queued | %zu fetching | %zu encoded J2K | %zu failed\n"
+          L"Textures: %zu queued | %zu fetching | %zu J2K encoded | %zu RGBA decoded | %zu failed\n"
           L"Object packets: %llu full, %llu compressed | Invalid: %llu",
           static_cast<unsigned long long>(stats.packets),
           static_cast<unsigned long long>(stats.decoded),
@@ -442,7 +469,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           live_objects->objects_with_face_colors(),
           live_objects->unique_texture_references(),
           asset_counts.queued,asset_counts.in_flight,
-          asset_counts.encoded_ready,asset_counts.failed,
+          asset_counts.encoded_ready,live_atlas.size(),asset_counts.failed,
           static_cast<unsigned long long>(objects.full_packets),
           static_cast<unsigned long long>(objects.compressed_packets),
           static_cast<unsigned long long>(objects.invalid_packets));
