@@ -22,6 +22,7 @@ public:
   static constexpr size_t max_entries=128;
   static constexpr size_t max_bytes=32u*1024u*1024u;
   static constexpr size_t max_one_asset=12u*1024u*1024u;
+  static constexpr size_t max_decoded_geometry_bytes=64u*1024u*1024u;
   void reconcile(const std::vector<AssetId>& ids);
   std::vector<AssetId> take_pending(size_t count=1);
   bool finish(const AssetId& id,std::vector<uint8_t> asset);
