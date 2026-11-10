@@ -93,6 +93,27 @@ std::vector<uint8_t> make_agent_update(const AuthenticatedSession& s,uint32_t se
   }
   return out;
 }
+std::vector<uint8_t> make_request_multiple_objects(const AuthenticatedSession& s,
+                                                  uint32_t sequence,
+                                                  const std::vector<uint32_t>& ids) {
+  // Official message_template.msg: RequestMultipleObjects Medium 3
+  // AgentData (AgentID, SessionID), ObjectData variable count, each
+  // (CacheMissType=0 for full object, ID U32).
+  if(!valid_session(s)||ids.empty()||ids.size()>64)return {};
+  std::vector<uint8_t> out={0x40,
+    static_cast<uint8_t>(sequence>>24),static_cast<uint8_t>(sequence>>16),
+    static_cast<uint8_t>(sequence>>8),static_cast<uint8_t>(sequence),
+    0,0xFF,0x03};
+  out.insert(out.end(),s.agent_id,s.agent_id+16);
+  out.insert(out.end(),s.session_id,s.session_id+16);
+  out.push_back(static_cast<uint8_t>(ids.size()));
+  for(uint32_t id:ids) {
+    if(!id)return {};
+    out.push_back(0); // CacheMissType = 0 -> full update
+    append_u32_le(out,id);
+  }
+  return out;
+}
 bool SimulatorSession::connect(const AuthenticatedSession& s) {
   disconnect();
   if (!valid_session(s) || !transport_.open(s.endpoint)) return false;
@@ -123,6 +144,11 @@ size_t SimulatorSession::poll(const Receiver& receiver, size_t limit) {
     }
     receiver(packet,id);
   },limit);
+}
+bool SimulatorSession::request_objects(const std::vector<uint32_t>& ids) {
+  if(!active_session_)return false;
+  const auto packet=make_request_multiple_objects(active_,next_sequence_++,ids);
+  return !packet.empty()&&transport_.send(packet.data(),packet.size());
 }
 void SimulatorSession::tick() {
   if (!active_session_) return;

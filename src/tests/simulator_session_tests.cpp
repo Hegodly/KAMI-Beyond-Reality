@@ -35,4 +35,21 @@ int main() {
   assert(kami::sl::decode_message_id(decoded,update_id,offset));
   assert(update_id==4 && offset==1 && decoded.payload.size()==115);
   assert(decoded.payload[1]==s.agent_id[0] && decoded.payload[17]==s.session_id[0]);
+  const auto request=kami::sl::make_request_multiple_objects(s,7,{100,0x12345678});
+  assert(!request.empty() && request[0]==0x40);
+  kami::sl::Packet request_packet;
+  assert(kami::sl::parse_packet(request.data(),request.size(),request_packet));
+  assert(kami::sl::decode_message_id(request_packet,update_id,offset));
+  assert(update_id==0x103 && offset==2);
+  assert(request_packet.payload[offset]==s.agent_id[0]);
+  assert(request_packet.payload[offset+16]==s.session_id[0]);
+  assert(request_packet.payload[offset+32]==2);
+  assert(request_packet.payload[offset+33]==0);
+  assert(request_packet.payload[offset+34]==100);
+  assert(request_packet.payload[offset+38]==0);
+  assert(request_packet.payload[offset+39]==0x78);
+  assert(request_packet.payload[offset+42]==0x12);
+  assert(kami::sl::make_request_multiple_objects(s,7,{}).empty());
+  assert(kami::sl::make_request_multiple_objects(s,7,{0}).empty());
+  assert(kami::sl::make_request_multiple_objects(s,7,std::vector<uint32_t>(65,1)).empty());
 }
