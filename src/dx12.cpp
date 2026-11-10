@@ -187,6 +187,8 @@ bool Dx12::set_region_scene(const world::TerrainAssembler& terrain,
       center_z - camera_z), -1.15f, -0.08f);
   }
   scene_proxy_roots=objects?std::min<size_t>(objects->renderable_prims(),1000):0;
+  scene_real_meshes=objects&&meshes?
+    std::min<size_t>(objects->renderable_meshes(*meshes),1000):0;
   terrain_sample_coverage = terrain.completion_ratio()*100.0f;
   terrain.min_max_received_heights(terrain_min_y,terrain_max_y);
   const auto continuity=terrain.measure_continuity();
@@ -415,10 +417,10 @@ void Dx12::frame() {
     wchar_t title[256]{};
     if (recorded_terrain) {
       swprintf_s(title,
-        L"KAMI DX12 [%s %.1f%% | %zu prims | J2K %zu staged / %zu queued | caps %s] | %u FPS | F8: terrain capture | Cam: %.1f, %.1f, %.1f",
+        L"KAMI DX12 [%s %.1f%% | %zu prims / %zu real meshes | J2K %zu staged | caps %s] | %u FPS | F8: terrain capture | Cam: %.1f, %.1f, %.1f",
         live_scene ? L"Second Life scene" : L"Capture terrain",
-        terrain_sample_coverage, scene_proxy_roots,
-        staged_encoded_textures,waiting_texture_assets,
+        terrain_sample_coverage, scene_proxy_roots,scene_real_meshes,
+        staged_encoded_textures,
         asset_cap_state==2?L"ready":asset_cap_state==1?L"pending":
           asset_cap_state==3?L"unavailable":L"missing",
         measured_fps,
