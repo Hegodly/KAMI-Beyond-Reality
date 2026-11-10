@@ -130,7 +130,10 @@ void Dx12::init(HWND hwnd) {
   pso.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
   pso.DSVFormat = DXGI_FORMAT_D32_FLOAT;
   ok(device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pipeline)));
-  if (!set_world_mesh(world::make_terrain_mesh(world::make_demo_heightfield(129))))
+  auto demo_scene = world::make_terrain_mesh(world::make_demo_heightfield(129));
+  if (!world::append_mesh(demo_scene, world::make_box_mesh(0.0f, 2.0f, 15.0f, 5.0f, 4.0f, 5.0f)))
+    throw std::runtime_error("Failed to assemble scene geometry");
+  if (!set_world_mesh(demo_scene))
     throw std::runtime_error("Failed to initialize world mesh");
   D3D12_DESCRIPTOR_HEAP_DESC dsv_desc{};
   dsv_desc.NumDescriptors = 1;
