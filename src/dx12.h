@@ -24,5 +24,11 @@ private:
   UINT frame_index = 0;
   UINT rtv_step = 0;
   UINT64 fence_value = 0;
+  Microsoft::WRL::ComPtr<ID3D12RootSignature> root_signature;
+  Microsoft::WRL::ComPtr<ID3D12PipelineState> pipeline;
+  Microsoft::WRL::ComPtr<ID3D12Resource> vertex_buffer;
+  D3D12_VERTEX_BUFFER_VIEW vertex_view{};
+  D3D12_VIEWPORT viewport{};
+  D3D12_RECT scissor{};
 };
 }
