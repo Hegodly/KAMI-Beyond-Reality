@@ -30,6 +30,7 @@ public:
   bool apply_patch_batch(const std::vector<TerrainPatch>& patches);
   bool sample_height(uint32_t x, uint32_t y, float& elevation) const;
   bool build_partial_render_mesh(TerrainMesh& output) const;
+  size_t renderable_cells() const;
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
