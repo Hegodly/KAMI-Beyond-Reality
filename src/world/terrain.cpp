@@ -81,6 +81,14 @@ bool TerrainAssembler::build_render_mesh(TerrainMesh& output) const {
 bool TerrainAssembler::ready_to_render() const {
   return complete() && heights_.valid();
 }
+bool TerrainAssembler::patch_received(uint32_t x,uint32_t y,uint32_t width,uint32_t height) const {
+  if (!width || !height || x >= heights_.width || y >= heights_.height ||
+      width > heights_.width-x || height > heights_.height-y) return false;
+  for (uint32_t row=y;row<y+height;++row)
+    for (uint32_t col=x;col<x+width;++col)
+      if (!has_sample(col,row)) return false;
+  return true;
+}
 bool TerrainAssembler::apply_patch_if_new(const TerrainPatch& patch) {
   if (!validate_patch(patch, heights_)) return false;
   bool all_received = true;
