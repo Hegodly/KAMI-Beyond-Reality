@@ -5,6 +5,8 @@
 #include <vector>
 #include <cmath>
 #include <cstdint>
+#include <DirectXMath.h>
+#include <algorithm>
 #pragma comment(lib, "d3dcompiler.lib")
 namespace {
 void ok(HRESULT hr) { if (FAILED(hr)) throw std::runtime_error("D3D12 operation failed"); }
@@ -52,17 +54,12 @@ void Dx12::init(HWND hwnd) {
   if (!event_handle) throw std::runtime_error("CreateEvent failed");
   // Original HLSL: vertex-colored geometry, compiled during initialization.
   const char* shader = R"(
+    cbuffer Camera : register(b0) { float4x4 view_projection; };
     struct VSInput { float3 position : POSITION; float3 color : COLOR; };
     struct VSOutput { float4 position : SV_POSITION; float3 color : COLOR; };
     VSOutput VSMain(VSInput input) {
       VSOutput output;
-      // World coordinates: X across terrain, Y elevation, Z distance.
-      // Fixed perspective camera above the terrain, looking toward +Z.
-      float3 p = input.position - float3(0.0, 5.0, -10.0);
-      float depth = p.z + p.y * 0.22;
-      float height = p.y - p.z * 0.22;
-      float aspect = 1280.0 / 720.0;
-      output.position = float4(p.x / aspect, height, depth * 1.001 - 0.1, depth);
+      output.position = mul(view_projection, float4(input.position, 1.0));
       output.color = input.color;
       return output;
     }
@@ -75,6 +72,13 @@ void Dx12::init(HWND hwnd) {
   errors.Reset();
   ok(D3DCompile(shader, std::strlen(shader), nullptr, nullptr, nullptr, "PSMain", "ps_5_0", 0, 0, &ps, &errors));
   D3D12_ROOT_SIGNATURE_DESC root_desc{};
+  D3D12_ROOT_PARAMETER camera_param{};
+  camera_param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+  camera_param.Constants.ShaderRegister = 0;
+  camera_param.Constants.Num32BitValues = 16;
+  camera_param.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+  root_desc.NumParameters = 1;
+  root_desc.pParameters = &camera_param;
   root_desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
   Microsoft::WRL::ComPtr<ID3DBlob> root_blob;
   errors.Reset();
@@ -105,14 +109,14 @@ void Dx12::init(HWND hwnd) {
   ok(device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pipeline)));
   struct Vertex { float x, y, z, r, g, b; };
   // Procedural terrain is a geometry pipeline milestone, NOT Second Life land.
-  constexpr int side = 33;
+  constexpr int side = 129;
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
   vertices.reserve(side * side);
   for (int z = 0; z < side; ++z) {
     for (int x = 0; x < side; ++x) {
-      float px = (x - 16) * 1.25f;
-      float pz = z * 1.25f + 2.0f;
+      float px = (x - 64) * 2.0f;
+      float pz = z * 2.0f - 32.0f;
       float y = 1.2f * std::sin(px * 0.23f) * std::cos(pz * 0.19f);
       float green = 0.28f + 0.15f * (y + 1.2f) / 2.4f;
       vertices.push_back({px, y, pz, 0.10f, green, 0.24f});
@@ -189,6 +193,36 @@ void Dx12::sync() {
   }
 }
 void Dx12::frame() {
+  const ULONGLONG now = GetTickCount64();
+  float dt = last_tick ? std::min(0.05f, static_cast<float>(now - last_tick) * 0.001f) : 0.016f;
+  last_tick = now;
+  const float speed = ((GetAsyncKeyState(VK_SHIFT) & 0x8000) ? 24.0f : 10.0f) * dt;
+  const float forward_x = std::sin(yaw), forward_z = std::cos(yaw);
+  const float right_x = std::cos(yaw), right_z = -std::sin(yaw);
+  if (GetAsyncKeyState('W') & 0x8000) { camera_x += forward_x * speed; camera_z += forward_z * speed; }
+  if (GetAsyncKeyState('S') & 0x8000) { camera_x -= forward_x * speed; camera_z -= forward_z * speed; }
+  if (GetAsyncKeyState('D') & 0x8000) { camera_x += right_x * speed; camera_z += right_z * speed; }
+  if (GetAsyncKeyState('A') & 0x8000) { camera_x -= right_x * speed; camera_z -= right_z * speed; }
+  if (GetAsyncKeyState('E') & 0x8000) camera_y += speed;
+  if (GetAsyncKeyState('Q') & 0x8000) camera_y -= speed;
+  POINT mouse{};
+  if (GetAsyncKeyState(VK_RBUTTON) & 0x8000 && GetCursorPos(&mouse)) {
+    if (mouse_tracking) {
+      yaw += static_cast<float>(mouse.x - previous_mouse.x) * 0.003f;
+      pitch = std::clamp(pitch - static_cast<float>(mouse.y - previous_mouse.y) * 0.003f, -1.45f, 1.45f);
+    }
+    previous_mouse = mouse;
+    mouse_tracking = true;
+  } else mouse_tracking = false;
+  using namespace DirectX;
+  XMVECTOR eye = XMVectorSet(camera_x, camera_y, camera_z, 1.0f);
+  XMVECTOR direction = XMVectorSet(std::sin(yaw) * std::cos(pitch), std::sin(pitch),
+                                  std::cos(yaw) * std::cos(pitch), 0.0f);
+  XMMATRIX view = XMMatrixLookToLH(eye, direction, XMVectorSet(0, 1, 0, 0));
+  XMMATRIX projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(75.0f),
+    viewport.Width / viewport.Height, 0.1f, 500.0f);
+  XMFLOAT4X4 matrix{};
+  XMStoreFloat4x4(&matrix, XMMatrixTranspose(view * projection));
   sync(); // One in-flight frame: simple, safe foundation; optimize later.
   ok(allocator->Reset());
   ok(commands->Reset(allocator.Get(), nullptr));
@@ -209,6 +243,7 @@ void Dx12::frame() {
   commands->RSSetViewports(1, &viewport);
   commands->RSSetScissorRects(1, &scissor);
   commands->SetGraphicsRootSignature(root_signature.Get());
+  commands->SetGraphicsRoot32BitConstants(0, 16, &matrix, 0);
   commands->SetPipelineState(pipeline.Get());
   commands->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
   commands->IASetVertexBuffers(0, 1, &vertex_view);
