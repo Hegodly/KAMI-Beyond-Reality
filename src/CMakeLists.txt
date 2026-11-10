@@ -46,3 +46,10 @@ add_executable(kami_real_wire_terrain_tests
   world/region_protocol.cpp world/lludp.cpp)
 target_include_directories(kami_real_wire_terrain_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME real_second_life_layer_wire_format COMMAND kami_real_wire_terrain_tests)
+
+# Compiles the exact embedded HLSL shaders and checks the row-vector
+# camera convention against DirectXMath; does not require a GPU.
+add_executable(kami_dx12_projection_tests tests/dx12_projection_tests.cpp)
+target_include_directories(kami_dx12_projection_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(kami_dx12_projection_tests PRIVATE d3dcompiler)
+add_test(NAME dx12_camera_projection_and_shader COMMAND kami_dx12_projection_tests)

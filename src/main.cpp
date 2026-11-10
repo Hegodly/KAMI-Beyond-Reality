@@ -111,6 +111,7 @@ void open_capture(HWND window) {
       L"Invalid or empty KAMIUDP1 capture. No world geometry was replaced.");
     return;
   }
+  if (active_renderer) active_renderer->prepare_recorded_region();
   if (!active_renderer || !active_renderer->set_region_terrain(replay.terrain())) {
     SetWindowTextW(status_text, L"Decoded terrain could not be uploaded to DX12.");
     return;

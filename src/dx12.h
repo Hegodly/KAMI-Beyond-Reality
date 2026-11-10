@@ -15,7 +15,15 @@ public:
   bool set_world_mesh(const world::TerrainMesh& mesh);
   bool set_region_terrain(const world::TerrainAssembler& terrain);
   bool showing_recorded_terrain() const { return recorded_terrain; }
-  void prepare_live_region() { recorded_terrain = false; }
+  // Clear the demonstration index count until authenticated terrain arrives.
+  void prepare_live_region() {
+    recorded_terrain = false; live_scene = true; index_count = 0;
+    terrain_sample_coverage = 0.0f;
+  }
+  void prepare_recorded_region() {
+    recorded_terrain = false; live_scene = false;
+    terrain_sample_coverage = 0.0f;
+  }
   ~Dx12();
 private:
   void sync();
@@ -53,5 +61,9 @@ private:
   bool keys[256]{};
   HWND window_handle = nullptr;
   bool recorded_terrain = false;
+  bool live_scene = false;
+  float terrain_sample_coverage = 0.0f;
+  float terrain_min_y = 0.0f;
+  float terrain_max_y = 0.0f;
 };
 }
