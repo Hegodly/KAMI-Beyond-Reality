@@ -51,5 +51,7 @@ int main() {
   terrain.reset();
   assert(!terrain.any_renderable_cells());
   assert(!terrain.min_max_received_heights(low,high));
+  assert(terrain.missing_samples()==16);
+  assert(terrain.completion_ratio()==0.0f);
   return 0;
 }
