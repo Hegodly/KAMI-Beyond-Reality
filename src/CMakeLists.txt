@@ -1,4 +1,4 @@
-add_executable(KAMIViewer WIN32 main.cpp dx12.cpp dx12.h world/region.h world/terrain.h world/terrain.cpp world/terrain_stream.h world/terrain_stream.cpp world/region_protocol.h world/region_protocol.cpp world/lludp.h world/lludp.cpp world/land_layer.h world/land_layer.cpp world/simulator_transport.h world/simulator_transport.cpp world/simulator_session.h world/simulator_session.cpp)
+add_executable(KAMIViewer WIN32 main.cpp dx12.cpp dx12.h world/region.h world/terrain.h world/terrain.cpp world/terrain_stream.h world/terrain_stream.cpp world/terrain_capture.h world/terrain_capture.cpp world/region_protocol.h world/region_protocol.cpp world/lludp.h world/lludp.cpp world/land_layer.h world/land_layer.cpp world/simulator_transport.h world/simulator_transport.cpp world/simulator_session.h world/simulator_session.cpp)
 target_compile_definitions(KAMIViewer PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(KAMIViewer PRIVATE d3d12 dxgi user32 ws2_32)
 enable_testing()
@@ -28,3 +28,7 @@ add_test(NAME land_layer_bitstream COMMAND kami_land_layer_tests)
 add_executable(kami_terrain_stream_tests tests/terrain_stream_tests.cpp world/terrain_stream.cpp world/terrain.cpp world/land_layer.cpp world/region_protocol.cpp world/lludp.cpp)
 target_include_directories(kami_terrain_stream_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME udp_packet_to_partial_mesh COMMAND kami_terrain_stream_tests)
+
+add_executable(kami_capture_tests tests/terrain_capture_tests.cpp world/terrain_capture.cpp world/terrain_stream.cpp world/terrain.cpp world/land_layer.cpp world/region_protocol.cpp world/lludp.cpp)
+target_include_directories(kami_capture_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME offline_real_packet_replay COMMAND kami_capture_tests)
