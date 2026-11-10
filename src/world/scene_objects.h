@@ -64,6 +64,7 @@ public:
   size_t renderable_prims() const;
   size_t objects_with_face_colors() const;
   size_t objects_with_mesh_asset() const;
+  size_t renderable_meshes(const MeshAssetQueue& assets) const;
   std::vector<AssetId> referenced_mesh_ids() const;
   size_t unique_texture_references() const;
   std::vector<AssetId> referenced_texture_ids() const;
