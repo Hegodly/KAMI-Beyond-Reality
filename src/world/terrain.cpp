@@ -27,6 +27,11 @@ bool TerrainAssembler::apply_patch(uint32_t x, uint32_t y, uint32_t width,
     }
   return true;
 }
+bool offset_mesh_indices(TerrainMesh& mesh, uint32_t offset) {
+  for (auto i : mesh.indices) if (i > UINT32_MAX - offset) return false;
+  for (auto& i : mesh.indices) i += offset;
+  return true;
+}
 bool set_mesh_colors(TerrainMesh& mesh, const std::vector<float>& rgb) {
   if (mesh.vertices.size() > SIZE_MAX / 3 || rgb.size() != mesh.vertices.size() * 3) return false;
   for (float c : rgb) if (!std::isfinite(c) || c < 0.0f) return false;
