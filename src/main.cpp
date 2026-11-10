@@ -25,6 +25,7 @@ std::unique_ptr<kami::sl::SimulatorSession> connected_session;
 std::unique_ptr<kami::world::TerrainStream> live_terrain;
 uint64_t live_uploaded_revision = 0;
 ULONGLONG live_last_upload_ms = 0;
+ULONGLONG live_last_status_ms = 0;
 HWND status_text = nullptr;
 std::vector<HWND> ui_controls;
 HFONT ui_font = nullptr;
@@ -254,6 +255,17 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           live_last_upload_ms=time;
           show_demo(window);
         }
+      }
+      if (connected_session && live_terrain && GetTickCount64()-live_last_status_ms>=1000) {
+        const auto& stats=live_terrain->stats();
+        wchar_t message[240]{};
+        swprintf_s(message,L"Simulator packets: %llu | Terrain decoded: %llu | Rejected: %llu | Land: %.1f%%",
+          static_cast<unsigned long long>(stats.packets),
+          static_cast<unsigned long long>(stats.decoded),
+          static_cast<unsigned long long>(stats.invalid),
+          live_terrain->terrain().completion_ratio()*100.0f);
+        SetWindowTextW(status_text,message);
+        live_last_status_ms=GetTickCount64();
       }
       if (IsIconic(window)) { WaitMessage(); continue; }
       renderer.frame();
