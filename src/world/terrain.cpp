@@ -15,6 +15,11 @@ TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacin
   heights_.elevations.assign(size_t(width) * height, 0.0f);
   received_.assign(size_t(width) * height, 0);
 }
+bool TerrainAssembler::build_render_mesh(TerrainMesh& output) const {
+  if (!ready_to_render()) return false;
+  output = make_terrain_mesh(heights_);
+  return validate_mesh(output);
+}
 bool TerrainAssembler::ready_to_render() const {
   return complete() && heights_.valid();
 }
