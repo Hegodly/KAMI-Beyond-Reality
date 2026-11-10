@@ -328,7 +328,10 @@ void Dx12::frame() {
   ok(commands->Close());
   ID3D12CommandList* lists[] = {commands.Get()};
   queue->ExecuteCommandLists(1, lists);
-  ok(swap->Present(1, 0));
+  HRESULT present_result = swap->Present(1, 0);
+  if (present_result == DXGI_ERROR_DEVICE_REMOVED || present_result == DXGI_ERROR_DEVICE_RESET)
+    throw std::runtime_error("DX12 device lost during Present");
+  ok(present_result);
   frame_index = swap->GetCurrentBackBufferIndex();
 }
 Dx12::~Dx12() {
