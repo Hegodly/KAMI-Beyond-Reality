@@ -70,22 +70,45 @@ void Dx12::init(HWND hwnd) {
   camera_param.Constants.ShaderRegister = 0;
   camera_param.Constants.Num32BitValues = 16;
   camera_param.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-  root_desc.NumParameters = 1;
-  root_desc.pParameters = &camera_param;
-  root_desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+  D3D12_DESCRIPTOR_RANGE range{};
+  range.RangeType=D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+  range.NumDescriptors=1;
+  range.BaseShaderRegister=0;
+  D3D12_ROOT_PARAMETER parameters[2]{};
+  parameters[0]=camera_param;
+  parameters[1].ParameterType=D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+  parameters[1].DescriptorTable.NumDescriptorRanges=1;
+  parameters[1].DescriptorTable.pDescriptorRanges=&range;
+  parameters[1].ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL;
+  D3D12_STATIC_SAMPLER_DESC sampler{};
+  sampler.Filter=D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+  sampler.AddressU=D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+  sampler.AddressV=D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+  sampler.AddressW=D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+  sampler.ComparisonFunc=D3D12_COMPARISON_FUNC_ALWAYS;
+  sampler.ShaderRegister=0;
+  sampler.ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL;
+  sampler.MaxLOD=D3D12_FLOAT32_MAX;
+  root_desc.NumParameters=2;
+  root_desc.pParameters=parameters;
+  root_desc.NumStaticSamplers=1;
+  root_desc.pStaticSamplers=&sampler;
+  root_desc.Flags=D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
   Microsoft::WRL::ComPtr<ID3DBlob> root_blob;
   errors.Reset();
   ok(D3D12SerializeRootSignature(&root_desc, D3D_ROOT_SIGNATURE_VERSION_1, &root_blob, &errors));
   ok(device->CreateRootSignature(0, root_blob->GetBufferPointer(), root_blob->GetBufferSize(), IID_PPV_ARGS(&root_signature)));
   D3D12_INPUT_ELEMENT_DESC inputs[] = {
     {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-    {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+    {"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+    {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+    {"TEXCOORD", 1, DXGI_FORMAT_R32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
   };
   D3D12_GRAPHICS_PIPELINE_STATE_DESC pso{};
   pso.pRootSignature = root_signature.Get();
   pso.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
   pso.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
-  pso.InputLayout = {inputs, 2};
+  pso.InputLayout = {inputs, 4};
   pso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
   pso.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
   pso.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
@@ -100,6 +123,11 @@ void Dx12::init(HWND hwnd) {
   pso.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
   pso.DSVFormat = DXGI_FORMAT_D32_FLOAT;
   ok(device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pipeline)));
+  D3D12_DESCRIPTOR_HEAP_DESC srv_desc{};
+  srv_desc.NumDescriptors=1;
+  srv_desc.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+  srv_desc.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+  ok(device->CreateDescriptorHeap(&srv_desc,IID_PPV_ARGS(&srv_heap)));
   auto demo_scene = world::make_terrain_mesh(world::make_demo_heightfield(129));
   if (!world::append_mesh(demo_scene, world::make_box_mesh(0.0f, 2.0f, 15.0f, 5.0f, 4.0f, 5.0f)))
     throw std::runtime_error("Failed to assemble scene geometry");
@@ -120,16 +148,21 @@ void Dx12::init(HWND hwnd) {
   dsv_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
   ok(device->CreateDescriptorHeap(&dsv_desc, IID_PPV_ARGS(&dsv_heap)));
   create_depth(desc.Width, desc.Height);
+  // White 512x512 atlas makes the shader valid before any live asset.
+  world::TextureAtlas initial_atlas;
+  if(!upload_texture_atlas(initial_atlas))
+    throw std::runtime_error("Failed to create initial DX12 texture atlas");
 }
 bool Dx12::set_region_terrain(const world::TerrainAssembler& terrain) {
   return set_region_scene(terrain,nullptr);
 }
 bool Dx12::set_region_scene(const world::TerrainAssembler& terrain,
-                            const world::SceneObjects* objects) {
+                            const world::SceneObjects* objects,
+                            const world::TextureAtlas* atlas) {
   world::TerrainMesh mesh;
   const bool has_land=terrain.build_partial_render_mesh(mesh);
   world::TerrainMesh proxies;
-  const bool has_proxies=objects && objects->build_proxy_mesh(proxies,1000);
+  const bool has_proxies=objects && objects->build_proxy_mesh(proxies,1000,atlas);
   if (!has_land && !has_proxies) return false;
   // Append prim proxy geometry without altering actual simulator terrain.
   if(has_proxies) {
@@ -167,7 +200,9 @@ bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
       mesh.indices.size() > UINT_MAX / sizeof(uint32_t)) return false;
   for (const auto& v : mesh.vertices) {
     if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
-        !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b)) return false;
+        !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b) ||
+        !std::isfinite(v.u) || !std::isfinite(v.v) ||
+        !std::isfinite(v.texture_mix)) return false;
   }
   if (mesh.indices.size() % 3 != 0) return false;
   for (uint32_t i : mesh.indices) if (i >= mesh.vertices.size()) return false;
@@ -213,6 +248,77 @@ bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
   vertex_view = next_vertex_view;
   index_view = next_index_view;
   index_count = new_index_count;
+  return true;
+}
+bool Dx12::upload_texture_atlas(const world::TextureAtlas& atlas) {
+  if(!device||!srv_heap ||
+     atlas.pixels().size()!=size_t(world::TextureAtlas::width)*
+       world::TextureAtlas::height*4)return false;
+  const UINT width=world::TextureAtlas::width;
+  const UINT height=world::TextureAtlas::height;
+  const UINT rowpitch=((width*4+255u)/256u)*256u;
+  D3D12_HEAP_PROPERTIES default_heap{},upload_heap{};
+  default_heap.Type=D3D12_HEAP_TYPE_DEFAULT;
+  upload_heap.Type=D3D12_HEAP_TYPE_UPLOAD;
+  D3D12_RESOURCE_DESC texture_desc{};
+  texture_desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+  texture_desc.Width=width;texture_desc.Height=height;
+  texture_desc.DepthOrArraySize=1;texture_desc.MipLevels=1;
+  texture_desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;
+  texture_desc.SampleDesc.Count=1;
+  Microsoft::WRL::ComPtr<ID3D12Resource> next,staging;
+  ok(device->CreateCommittedResource(&default_heap,D3D12_HEAP_FLAG_NONE,
+     &texture_desc,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&next)));
+  D3D12_RESOURCE_DESC upload_desc{};
+  upload_desc.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;
+  upload_desc.Width=uint64_t(rowpitch)*height;
+  upload_desc.Height=1;upload_desc.DepthOrArraySize=1;
+  upload_desc.MipLevels=1;upload_desc.SampleDesc.Count=1;
+  upload_desc.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+  ok(device->CreateCommittedResource(&upload_heap,D3D12_HEAP_FLAG_NONE,
+     &upload_desc,D3D12_RESOURCE_STATE_GENERIC_READ,nullptr,
+     IID_PPV_ARGS(&staging)));
+  void* mapped=nullptr;
+  D3D12_RANGE reads{0,0};
+  ok(staging->Map(0,&reads,&mapped));
+  auto* ptr=static_cast<uint8_t*>(mapped);
+  for(UINT row=0;row<height;++row)
+    std::memcpy(ptr+size_t(row)*rowpitch,
+      atlas.pixels().data()+size_t(row)*width*4,width*4);
+  staging->Unmap(0,nullptr);
+  sync();
+  ok(allocator->Reset());
+  ok(commands->Reset(allocator.Get(),nullptr));
+  D3D12_TEXTURE_COPY_LOCATION dest{},source{};
+  dest.pResource=next.Get();dest.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+  dest.SubresourceIndex=0;
+  source.pResource=staging.Get();
+  source.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+  source.PlacedFootprint.Footprint.Format=DXGI_FORMAT_R8G8B8A8_UNORM;
+  source.PlacedFootprint.Footprint.Width=width;
+  source.PlacedFootprint.Footprint.Height=height;
+  source.PlacedFootprint.Footprint.Depth=1;
+  source.PlacedFootprint.Footprint.RowPitch=rowpitch;
+  commands->CopyTextureRegion(&dest,0,0,0,&source,nullptr);
+  D3D12_RESOURCE_BARRIER barrier{};
+  barrier.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+  barrier.Transition.pResource=next.Get();
+  barrier.Transition.Subresource=D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+  barrier.Transition.StateBefore=D3D12_RESOURCE_STATE_COPY_DEST;
+  barrier.Transition.StateAfter=D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+  commands->ResourceBarrier(1,&barrier);
+  ok(commands->Close());
+  ID3D12CommandList* lists[]={commands.Get()};
+  queue->ExecuteCommandLists(1,lists);
+  sync(); // staging stays alive until the GPU upload is complete
+  D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+  srv.Format=DXGI_FORMAT_R8G8B8A8_UNORM;
+  srv.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;
+  srv.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+  srv.Texture2D.MipLevels=1;
+  device->CreateShaderResourceView(next.Get(),&srv,
+     srv_heap->GetCPUDescriptorHandleForHeapStart());
+  atlas_texture=std::move(next);
   return true;
 }
 void Dx12::create_depth(UINT width, UINT height) {
@@ -364,6 +470,10 @@ void Dx12::frame() {
   commands->RSSetScissorRects(1, &scissor);
   commands->SetGraphicsRootSignature(root_signature.Get());
   commands->SetGraphicsRoot32BitConstants(0, 16, &matrix, 0);
+  ID3D12DescriptorHeap* heaps[]={srv_heap.Get()};
+  commands->SetDescriptorHeaps(1,heaps);
+  commands->SetGraphicsRootDescriptorTable(1,
+    srv_heap->GetGPUDescriptorHandleForHeapStart());
   commands->SetPipelineState(pipeline.Get());
   commands->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
   commands->IASetVertexBuffers(0, 1, &vertex_view);

@@ -5,6 +5,7 @@
 #include <wrl/client.h>
 #include "world/terrain.h"
 #include "world/scene_objects.h"
+#include "world/texture_atlas.h"
 namespace kami {
 class Dx12 {
 public:
@@ -18,7 +19,10 @@ public:
   // Present actual simulator object locations as neutral primitive proxies.
   // This is not texture/material/mesh-asset rendering yet.
   bool set_region_scene(const world::TerrainAssembler& terrain,
-                        const world::SceneObjects* objects);
+                        const world::SceneObjects* objects,
+                        const world::TextureAtlas* atlas=nullptr);
+  // Uploads one validated CPU atlas into an SRV; call on render thread.
+  bool upload_texture_atlas(const world::TextureAtlas& atlas);
   bool showing_recorded_terrain() const { return recorded_terrain; }
   // 0=not advertised, 1=looking up, 2=available, 3=unavailable.
   // Opaque bearer capability URLs must never appear in the title.
@@ -61,6 +65,8 @@ private:
   Microsoft::WRL::ComPtr<ID3D12PipelineState> pipeline;
   Microsoft::WRL::ComPtr<ID3D12Resource> vertex_buffer;
   Microsoft::WRL::ComPtr<ID3D12Resource> index_buffer;
+  Microsoft::WRL::ComPtr<ID3D12Resource> atlas_texture;
+  Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srv_heap;
   Microsoft::WRL::ComPtr<ID3D12Resource> depth_buffer;
   Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsv_heap;
   D3D12_INDEX_BUFFER_VIEW index_view{};

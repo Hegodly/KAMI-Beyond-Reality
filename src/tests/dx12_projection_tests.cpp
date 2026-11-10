@@ -8,6 +8,8 @@ int main() {
   // Verify exactly the HLSL source embedded into the shipping executable.
   assert(std::strstr(kami::terrain_dx12_shader,
     "mul(float4(input.position, 1.0), view_projection)") != nullptr);
+  assert(std::strstr(kami::terrain_dx12_shader,
+    "atlas_texture.Sample(atlas_sampler, input.uv)") != nullptr);
   ID3DBlob* vs=nullptr;
   ID3DBlob* ps=nullptr;
   ID3DBlob* errors=nullptr;
