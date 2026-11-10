@@ -44,8 +44,8 @@ int main() {
   LandBitReader header_reader(bytes,sizeof(bytes));
   LandGroupHeader header;
   assert(read_land_group_header(header_reader,header));
-  assert(header.stride==0x1234 && header.patch_size==16 && header.layer_type==0x4C);
-  const uint8_t patch_bytes[]={0x28,0x3F,0x80,0,0,0,0x10,0,0};
+  assert(header.stride==0x3412 && header.patch_size==16 && header.layer_type==0x4C);
+  const uint8_t patch_bytes[]={0x28,0,0,0x80,0x3F,0x10,0,0,0};
   LandBitReader patch_reader(patch_bytes,sizeof(patch_bytes));
   LandPatchHeader patch;
   assert(read_land_patch_header(patch_reader,patch));
@@ -61,9 +61,9 @@ int main() {
   assert(decode_land_coefficients(zeros,16,4,coefficients));
   assert(coefficients.size()==256);
   for (auto c:coefficients) assert(c==0);
-  const uint8_t malformed_run[]={0x40};
+  const uint8_t malformed_run[]={0xC0};
   LandBitReader malformed(malformed_run,sizeof(malformed_run));
-  assert(!decode_land_coefficients(malformed,16,4,coefficients));
+  assert(!decode_land_coefficients(malformed,16,17,coefficients));
   LandBitReader invalid_size(all_zero_coefficients,sizeof(all_zero_coefficients));
   assert(!decode_land_coefficients(invalid_size,8,4,coefficients));
   assert(!decode_land_coefficients(invalid_size,16,0,coefficients));
@@ -71,7 +71,7 @@ int main() {
   assert(decode_land_patch_coefficients(quantized_zeros,16,patch,coefficients));
   uint32_t patch_x=0,patch_y=0;
   assert(decode_land_patch_coordinates(3u|(2u<<5),16,patch_x,patch_y));
-  assert(patch_x==48 && patch_y==32);
+  assert(patch_x==32 && patch_y==48);
   assert(!decode_land_patch_coordinates(0,8,patch_x,patch_y));
   std::vector<float> reconstructed;
   assert(inverse_land_dct(coefficients,16,reconstructed));
@@ -80,7 +80,7 @@ int main() {
   std::vector<float> scaled;
   assert(scale_land_heights(reconstructed,patch,16,scaled));
   assert(scaled.size()==256);
-  for (float h:scaled) assert(h==1.0f);
+  for (float h:scaled) assert(h==9.0f);
   const uint8_t empty_group[]={0,0,16,0x4c,97};
   std::vector<DecodedLandPatch> decoded_group;
   assert(decode_land_group(empty_group,sizeof(empty_group),decoded_group));
@@ -109,4 +109,13 @@ int main() {
   assert(!read_land_group_header(bad,header));
   LandBitReader truncated(patch_bytes,2);
   assert(!read_land_patch_header(truncated,patch));
+  const uint8_t zero_end[]={0x80}; // 10 = EOB, all zeros
+  LandBitReader eob_reader(zero_end,sizeof(zero_end));
+  assert(decode_land_coefficients(eob_reader,16,2,coefficients));
+  for (auto sample:coefficients) assert(sample==0);
+  const uint8_t signed_code[]={0xEA}; // 111 + 010 = -2, then 10 = EOB
+  LandBitReader signed_reader_2(signed_code,sizeof(signed_code));
+  assert(decode_land_coefficients(signed_reader_2,16,3,coefficients));
+  assert(coefficients[0]==-2 && coefficients[1]==0);
+
 }
