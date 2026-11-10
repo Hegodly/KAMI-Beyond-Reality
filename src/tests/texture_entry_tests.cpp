@@ -28,7 +28,7 @@ std::vector<uint8_t> sample(bool material=true) {
   group(te,{0,0},0x04,{0,64}); // face 2: +0.5 S offset
   group(te,{0,0}); // T offset
   group(te,{0,0},0x04,{0,32}); // face 2: +90-degree rotation
-  group(te,{0}); // bump
+  group(te,{0},0x04,{32}); // face 2: fullbright bit 0x20
   group(te,{0}); // media
   group(te,{0}); // glow
   if(material) {
@@ -59,6 +59,8 @@ int main() {
   assert(std::fabs(result.faces[2].scale_s-2.f)<0.001f);
   assert(std::fabs(result.faces[2].offset_s-0.5f)<0.001f);
   assert(std::fabs(result.faces[2].rotation-1.5707963f)<0.001f);
+  assert(result.faces[2].bump_fullbright==0x20);
+  assert(result.faces[0].bump_fullbright==0);
   float u=0,v=0;
   assert(kami::world::transform_texture_uv(result.faces[0],0.75f,0.5f,u,v));
   assert(std::fabs(u-0.75f)<0.001f && std::fabs(v-0.5f)<0.001f);
