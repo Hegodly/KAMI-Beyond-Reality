@@ -370,6 +370,7 @@ int main() {
   assert(actual_meshes.take_pending(1)==mesh_ids);
   assert(actual_meshes.finish(mesh_ids[0],sample_mesh_asset()));
   assert(actual_meshes.stats().decoded_ready==1);
+  assert(mesh_scene.renderable_meshes(actual_meshes)==2);
   kami::world::TerrainMesh rendered_mesh;
   assert(mesh_scene.build_proxy_mesh(rendered_mesh,1000,nullptr,&actual_meshes));
   // Two objects point to the same downloaded 3-vertex triangle asset;
