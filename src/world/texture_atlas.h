@@ -17,6 +17,9 @@ public:
   static constexpr size_t max_images=columns*rows;
   TextureAtlas();
   bool insert(const AssetId& id,const DecodedImage& image);
+  // Shader tile index encoded as 1..64; zero means untextured.
+  // Keeps unwrapped UV coordinates for correct per-pixel repetition.
+  bool shader_slot(const AssetId& id,float& one_based_slot) const;
   bool uv(const AssetId& id,float local_u,float local_v,
           float& out_u,float& out_v) const;
   const std::vector<uint8_t>& pixels() const{return pixels_;}
