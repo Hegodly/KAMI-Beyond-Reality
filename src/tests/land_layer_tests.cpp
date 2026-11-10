@@ -7,6 +7,7 @@ int main() {
   LandBitReader reader(bytes,sizeof(bytes));
   uint32_t v=0;
   assert(reader.bits_remaining()==32);
+  assert(reader.peek_bits(4,v) && v==1 && reader.bit_position()==0);
   assert(reader.read_bits(4,v)&&v==1);
   assert(reader.read_bits(12,v)&&v==0x234);
   assert(reader.read_bits(8,v)&&v==16);
