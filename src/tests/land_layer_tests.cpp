@@ -80,6 +80,10 @@ int main() {
   assert(scale_land_heights(reconstructed,patch,16,scaled));
   assert(scaled.size()==256);
   for (float h:scaled) assert(h==1.0f);
+  const uint8_t empty_group[]={0,0,16,0x4c,97};
+  std::vector<DecodedLandPatch> decoded_group;
+  assert(decode_land_group(empty_group,sizeof(empty_group),decoded_group));
+  assert(decoded_group.empty());
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
