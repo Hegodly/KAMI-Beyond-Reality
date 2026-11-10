@@ -1,6 +1,7 @@
 #include "texture_asset_queue.h"
 #include <algorithm>
 #include <cstdio>
+#include <iterator>
 #include <string>
 #include <utility>
 namespace kami::world {

@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <string>
 #include <vector>
 namespace kami::world {
 using AssetId=std::array<uint8_t,16>;
