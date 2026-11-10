@@ -105,7 +105,8 @@ bool parse_region_prefix(Cursor& c,uint8_t& count) {
   return c.skip(10)&&c.u8(count)&&count<=128;
 }
 bool parse_full(const std::vector<uint8_t>& data,size_t offset,
-                std::vector<SceneObject>& objects,size_t& skipped) {
+                std::vector<SceneObject>& objects,size_t& skipped,
+                size_t& malformed_textures) {
   Cursor c{data,offset};uint8_t blocks=0;
   if(!parse_region_prefix(c,blocks))return false;
   for(unsigned i=0;i<blocks;++i) {
@@ -126,6 +127,7 @@ bool parse_full(const std::vector<uint8_t>& data,size_t offset,
        !c.texture(ob.textures,malformed_texture)||!c.var1()||!c.var2()||!c.var2()||
        !c.var1()||!c.skip(4)||!c.var1()||!c.var1()||
        !c.var1()||!c.skip(16+16+4+1+4+1+12+12)) return false;
+    if(malformed_texture)++malformed_textures;
     if ((length==60||length==124) && plausible(ob) && normalize_rotation(ob))
       objects.push_back(ob);
     else ++skipped;
@@ -133,7 +135,8 @@ bool parse_full(const std::vector<uint8_t>& data,size_t offset,
   return c.remain()==0;
 }
 bool parse_compressed(const std::vector<uint8_t>& data,size_t offset,
-                      std::vector<SceneObject>& objects,size_t& skipped) {
+                      std::vector<SceneObject>& objects,size_t& skipped,
+                size_t& malformed_textures) {
   Cursor c{data,offset};uint8_t blocks=0;
   if(!parse_region_prefix(c,blocks))return false;
   for(unsigned i=0;i<blocks;++i) {
@@ -174,6 +177,7 @@ bool parse_compressed(const std::vector<uint8_t>& data,size_t offset,
                 TextureEntries parsed;
                 if(parse_texture_entries(data.data()+c.pos,count,parsed))
                   ob.textures=std::move(parsed);
+                else ++malformed_textures;
               }
               c.pos+=count;
             }
@@ -316,13 +320,14 @@ bool SceneObjects::ingest(const kami::sl::Packet& packet) {
   if(!kami::sl::decode_message_id(packet,id,offset))return false;
   if(id!=full_id&&id!=compressed_id&&id!=cached_id&&id!=kill_id)return false;
   std::vector<SceneObject> received;std::vector<uint32_t> keys;
-  size_t skipped=0;bool parsed=false;
-  if(id==full_id) {++stats_.full_packets;parsed=parse_full(packet.payload,offset,received,skipped);}
-  if(id==compressed_id) {++stats_.compressed_packets;parsed=parse_compressed(packet.payload,offset,received,skipped);}
+  size_t skipped=0,malformed_texture=0;bool parsed=false;
+  if(id==full_id) {++stats_.full_packets;parsed=parse_full(packet.payload,offset,received,skipped,malformed_texture);}
+  if(id==compressed_id) {++stats_.compressed_packets;parsed=parse_compressed(packet.payload,offset,received,skipped,malformed_texture);}
   if(id==cached_id) {++stats_.cached_packets;parsed=parse_cached(packet.payload,offset,keys);}
   if(id==kill_id) {++stats_.kill_packets;parsed=parse_kill(packet.payload,offset,keys);}
   if(!parsed){++stats_.invalid_packets;return false;}
   stats_.unsupported_objects+=skipped;
+  stats_.invalid_texture_entries+=malformed_texture;
   if(id==cached_id) {
     for(uint32_t key:keys)
       if(!objects_.contains(key)&&missing_.size()<8192)missing_.insert(key);
