@@ -15,6 +15,7 @@ struct AuthenticatedSession {
 bool valid_session(const AuthenticatedSession& session);
 std::vector<uint8_t> make_use_circuit_code(const AuthenticatedSession& session, uint32_t sequence);
 std::vector<uint8_t> make_complete_agent_movement(const AuthenticatedSession& session, uint32_t sequence);
+std::vector<uint8_t> make_packet_ack(uint32_t sequence, uint32_t received_sequence);
 class SimulatorSession {
 public:
   using Receiver = SimulatorTransport::Receiver;

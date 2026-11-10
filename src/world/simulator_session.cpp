@@ -38,6 +38,17 @@ std::vector<uint8_t> make_complete_agent_movement(const AuthenticatedSession& s,
   append_u32_le(out,s.circuit_code);
   return out;
 }
+std::vector<uint8_t> make_packet_ack(uint32_t sequence, uint32_t received_sequence) {
+  // PacketAck: fixed frequency 0xFFFFFFFB, one little-endian packet sequence.
+  return {0x00,
+    static_cast<uint8_t>(sequence >> 24), static_cast<uint8_t>(sequence >> 16),
+    static_cast<uint8_t>(sequence >> 8), static_cast<uint8_t>(sequence), 0x00,
+    0xFF,0xFF,0xFF,0xFB,0x01,
+    static_cast<uint8_t>(received_sequence),
+    static_cast<uint8_t>(received_sequence >> 8),
+    static_cast<uint8_t>(received_sequence >> 16),
+    static_cast<uint8_t>(received_sequence >> 24)};
+}
 bool SimulatorSession::connect(const AuthenticatedSession& s) {
   disconnect();
   if (!valid_session(s) || !transport_.open(s.endpoint)) return false;
