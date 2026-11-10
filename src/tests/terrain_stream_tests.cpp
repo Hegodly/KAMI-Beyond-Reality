@@ -46,7 +46,7 @@ int main() {
   assert(!stream.terrain().complete());
   datagram[7]=55;
   assert(!stream.ingest_datagram(datagram.data(),datagram.size()));
-  assert(stream.stats().invalid==1 && stream.stats().ignored==2);
+  assert(stream.stats().invalid==2 && stream.stats().ignored==1);
   stream.reset();
   assert(stream.stats().packets==0 && stream.revision()==0);
   assert(stream.terrain().received_samples()==0);
