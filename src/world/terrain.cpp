@@ -14,6 +14,10 @@ TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacin
   heights_.elevations.assign(size_t(width) * height, 0.0f);
   received_.assign(size_t(width) * height, 0);
 }
+bool TerrainAssembler::has_sample(uint32_t x, uint32_t y) const {
+  return x < heights_.width && y < heights_.height &&
+         received_[size_t(y) * heights_.width + x] != 0;
+}
 void TerrainAssembler::reset() {
   std::fill(received_.begin(), received_.end(), uint8_t{0});
   std::fill(heights_.elevations.begin(), heights_.elevations.end(), 0.0f);
