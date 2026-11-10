@@ -28,6 +28,30 @@ bool TerrainAssembler::apply_patch_batch(const std::vector<TerrainPatch>& patche
     if (!apply_decoded_patch(patch)) return false;
   return true;
 }
+bool TerrainAssembler::build_partial_render_mesh(TerrainMesh& output) const {
+  TerrainMesh candidate;
+  const auto& h = heights_;
+  for (uint32_t y = 0; y + 1 < h.height; ++y)
+    for (uint32_t x = 0; x + 1 < h.width; ++x) {
+      if (!has_sample(x,y) || !has_sample(x+1,y) ||
+          !has_sample(x,y+1) || !has_sample(x+1,y+1)) continue;
+      const uint32_t xx[4] = {x,x+1,x,x+1};
+      const uint32_t yy[4] = {y,y,y+1,y+1};
+      if (candidate.vertices.size() > UINT32_MAX - 4 ||
+          candidate.indices.size() > UINT32_MAX - 6) return false;
+      const auto base = static_cast<uint32_t>(candidate.vertices.size());
+      for (int k=0;k<4;++k) {
+        const float height = h.at(xx[k],yy[k]);
+        candidate.vertices.push_back({(float(xx[k])-float(h.width-1)*.5f)*h.spacing,
+          height,float(yy[k])*h.spacing-32.0f,.10f,.35f,.24f});
+      }
+      candidate.indices.insert(candidate.indices.end(),
+        {base,base+2,base+1,base+1,base+2,base+3});
+    }
+  if (!validate_mesh(candidate)) return false;
+  output = std::move(candidate);
+  return true;
+}
 bool TerrainAssembler::build_render_mesh(TerrainMesh& output) const {
   if (!ready_to_render()) return false;
   output = make_terrain_mesh(heights_);
