@@ -59,6 +59,28 @@ int main() {
   TextureEntries no_material;
   assert(parse_texture_entries(older.data(),older.size(),no_material,5));
   assert(no_material.valid&&!no_material.faces[0].has_legacy_material);
+  // Material UUID override for face 1. Official packTEField does not
+  // append a terminating zero at the very end of the message.
+  auto material_overrides=sample(false);
+  std::vector<uint8_t> default_id(16,0);
+  default_id[3]=1;
+  material_overrides.insert(material_overrides.end(),
+                            default_id.begin(),default_id.end());
+  material_overrides.push_back(0x02); // exception mask: face 1
+  std::vector<uint8_t> override_id(16,0);
+  override_id[3]=2;
+  material_overrides.insert(material_overrides.end(),
+                            override_id.begin(),override_id.end());
+  TextureEntries entries;
+  assert(parse_texture_entries(material_overrides.data(),
+          material_overrides.size(),entries,6));
+  assert(entries.faces[0].legacy_material_id[3]==1);
+  assert(entries.faces[1].legacy_material_id[3]==2);
+  assert(entries.faces[2].legacy_material_id[3]==1);
+  material_overrides.pop_back();
+  assert(!parse_texture_entries(material_overrides.data(),
+          material_overrides.size(),entries,6));
+  assert(entries.faces[1].legacy_material_id[3]==2);
   assert(!parse_texture_entries(nullptr,data.size(),result,6));
   assert(!parse_texture_entries(data.data(),data.size(),result,0));
   assert(!parse_texture_entries(data.data(),data.size(),result,46));
