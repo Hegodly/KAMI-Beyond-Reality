@@ -65,5 +65,7 @@ private:
   float terrain_sample_coverage = 0.0f;
   float terrain_min_y = 0.0f;
   float terrain_max_y = 0.0f;
+  float terrain_max_step = 0.0f;
+  float terrain_max_patch_seam = 0.0f;
 };
 }

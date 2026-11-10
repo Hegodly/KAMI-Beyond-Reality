@@ -28,6 +28,38 @@ bool TerrainAssembler::min_max_received_heights(float& low,float& high) const {
   }
   return !first;
 }
+TerrainContinuity TerrainAssembler::measure_continuity(uint32_t patch_size) const {
+  TerrainContinuity result;
+  const auto& h=heights_;
+  if (!patch_size) return result;
+  for (uint32_t y=0;y<h.height;++y) {
+    for (uint32_t x=0;x<h.width;++x) {
+      if (!has_sample(x,y)) continue;
+      const float center=h.at(x,y);
+      if (x+1<h.width && has_sample(x+1,y)) {
+        const float step=std::fabs(center-h.at(x+1,y));
+        ++result.adjacent_pairs;
+        result.largest_step_m=std::max(result.largest_step_m,step);
+        if ((x+1)%patch_size==0) {
+          ++result.patch_boundary_pairs;
+          result.largest_patch_boundary_step_m=
+            std::max(result.largest_patch_boundary_step_m,step);
+        }
+      }
+      if (y+1<h.height && has_sample(x,y+1)) {
+        const float step=std::fabs(center-h.at(x,y+1));
+        ++result.adjacent_pairs;
+        result.largest_step_m=std::max(result.largest_step_m,step);
+        if ((y+1)%patch_size==0) {
+          ++result.patch_boundary_pairs;
+          result.largest_patch_boundary_step_m=
+            std::max(result.largest_patch_boundary_step_m,step);
+        }
+      }
+    }
+  }
+  return result;
+}
 bool TerrainAssembler::sample_world_height(float meters_x,float meters_y,float& elevation) const {
   if (!std::isfinite(meters_x) || !std::isfinite(meters_y)) return false;
   return sample_height_bilinear(meters_x/heights_.spacing,meters_y/heights_.spacing,elevation);

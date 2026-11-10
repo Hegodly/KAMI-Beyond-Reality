@@ -11,6 +11,14 @@ struct TerrainMesh {
   std::vector<TerrainVertex> vertices;
   std::vector<uint32_t> indices;
 };
+// For diagnosis only: these are raw elevation steps between adjacent received
+// meter samples, not evidence that a slope is invalid or should be modified.
+struct TerrainContinuity {
+  float largest_step_m = 0.0f;
+  float largest_patch_boundary_step_m = 0.0f;
+  size_t adjacent_pairs = 0;
+  size_t patch_boundary_pairs = 0;
+};
 // Simulator terrain patches are decoded elsewhere. This class applies decoded
 // samples to a full region heightfield, handling out-of-order patch arrival.
 class TerrainAssembler {
@@ -40,6 +48,7 @@ public:
   bool sample_height_bilinear(float x, float y, float& elevation) const;
   bool sample_world_height(float meters_x, float meters_y, float& elevation) const;
   bool min_max_received_heights(float& low, float& high) const;
+  TerrainContinuity measure_continuity(uint32_t patch_size=16) const;
   bool apply_land_layer(const uint8_t* bytes,size_t size);
   bool apply_land_packet(const kami::sl::Packet& packet);
 private:

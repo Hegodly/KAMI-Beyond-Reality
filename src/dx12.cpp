@@ -141,6 +141,9 @@ bool Dx12::set_region_terrain(const world::TerrainAssembler& terrain) {
   }
   terrain_sample_coverage = terrain.completion_ratio()*100.0f;
   terrain.min_max_received_heights(terrain_min_y,terrain_max_y);
+  const auto continuity=terrain.measure_continuity();
+  terrain_max_step=continuity.largest_step_m;
+  terrain_max_patch_seam=continuity.largest_patch_boundary_step_m;
   recorded_terrain = true;
   return true;
 }
@@ -291,9 +294,10 @@ void Dx12::frame() {
     wchar_t title[256]{};
     if (recorded_terrain) {
       swprintf_s(title,
-        L"KAMI DX12 [%s %.1f%% | heights %.0f..%.0fm] | %u FPS | F8: save land capture | Camera: %.1f, %.1f, %.1f",
+        L"KAMI DX12 [%s %.1f%% | %.0f..%.0fm | max step %.0fm seam %.0fm] | %u FPS | F8: save land capture | Camera: %.1f, %.1f, %.1f",
         live_scene ? L"Second Life terrain" : L"Capture terrain",
-        terrain_sample_coverage, terrain_min_y, terrain_max_y, measured_fps,
+        terrain_sample_coverage, terrain_min_y, terrain_max_y,
+        terrain_max_step, terrain_max_patch_seam, measured_fps,
         camera_x, camera_y, camera_z);
     } else {
       swprintf_s(title,L"KAMI DX12 [%s] | %u FPS | Camera: %.1f, %.1f, %.1f",
