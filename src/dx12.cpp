@@ -75,7 +75,7 @@ void Dx12::init(HWND hwnd) {
       float3 dpdx = ddx(input.world_position);
       float3 dpdy = ddy(input.world_position);
       float3 normal = normalize(cross(dpdy, dpdx));
-      normal = normalize(normal);
+      // Two-sided terrain shading uses the normal facing the light hemisphere.
       float3 sun_direction = normalize(float3(0.35, 0.8, -0.4));
       float diffuse = saturate(abs(dot(normal, sun_direction)));
       float lighting = 0.30 + 0.70 * diffuse;
