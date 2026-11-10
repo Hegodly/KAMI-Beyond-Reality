@@ -150,7 +150,7 @@ bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
   sync();
   const auto& vertices = mesh.vertices;
   const auto& indices = mesh.indices;
-  index_count = static_cast<UINT>(indices.size());
+  const UINT new_index_count = static_cast<UINT>(indices.size());
   D3D12_HEAP_PROPERTIES upload{};
   upload.Type = D3D12_HEAP_TYPE_UPLOAD;
   D3D12_RESOURCE_DESC resource{};
@@ -180,6 +180,7 @@ bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
   index_view.BufferLocation = index_buffer->GetGPUVirtualAddress();
   index_view.SizeInBytes = static_cast<UINT>(resource.Width);
   index_view.Format = DXGI_FORMAT_R32_UINT;
+  index_count = new_index_count;
   return true;
 }
 void Dx12::create_depth(UINT width, UINT height) {
