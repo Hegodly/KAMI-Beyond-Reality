@@ -52,17 +52,23 @@ struct Reader {
     uint8_t start=0,finish=0;uint32_t entries=0;
     if(!byte(start)||start!='{'||!be32(entries)||entries>32)return false;
     int64_t offset=-1,size=-1;
+    bool got_offset=false,got_size=false;
     for(uint32_t i=0;i<entries;++i){
       std::string field;
       if(!key(field))return false;
       if(field=="offset"||field=="size"){
         uint8_t tag=0;uint32_t value=0;
-        if(!byte(tag)||tag!='i'||!be32(value)||value>INT32_MAX)return false;
-        if(field=="offset")offset=static_cast<int64_t>(value);
-        else size=static_cast<int64_t>(value);
+        if(!byte(tag)||tag!='i'||!be32(value))return false;
+        const int64_t signed_value=static_cast<int32_t>(value);
+        if(field=="offset"){offset=signed_value;got_offset=true;}
+        else {size=signed_value;got_size=true;}
       }else if(!skip(2))return false;
     }
-    if(!byte(finish)||finish!='}'||offset<0||size<=0)return false;
+    if(!byte(finish)||finish!='}'||!got_offset||!got_size)return false;
+    // The official mesh encoder writes (-1, 0) for an unavailable LOD.
+    // Do not reject the entire asset just because its high LOD is absent.
+    if(offset==-1 && size==0)return true;
+    if(offset<0||size<=0)return false;
     out.offset=static_cast<size_t>(offset);
     out.size=static_cast<size_t>(size);
     out.present=true;
@@ -102,7 +108,9 @@ bool parse_mesh_asset_header(const uint8_t* data,size_t length,
       if(!r.lod(parsed.lowest))return false;
     }else if(!r.skip(1))return false;
   }
-  if(!r.byte(marker)||marker!='}'||r.pos>131072||!parsed.high.present)
+  if(!r.byte(marker)||marker!='}'||r.pos>131072||
+     !(parsed.high.present||parsed.medium.present||
+       parsed.low.present||parsed.lowest.present))
     return false;
   parsed.header_bytes=r.pos;
   for(const MeshLodBlock* block:{&parsed.high,&parsed.medium,&parsed.low,&parsed.lowest}) {
