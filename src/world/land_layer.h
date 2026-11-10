@@ -7,6 +7,7 @@ class LandBitReader {
 public:
   LandBitReader(const uint8_t* bytes, size_t size);
   bool read_bits(unsigned count, uint32_t& value);
+  bool read_signed_bits(unsigned count, int32_t& value);
   size_t bits_remaining() const;
   size_t bit_position() const { return bit_position_; }
 private:
