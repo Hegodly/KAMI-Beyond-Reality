@@ -23,6 +23,7 @@ HWND mfa_input = nullptr;
 std::future<kami::sl::LoginResult> login_future;
 std::unique_ptr<kami::sl::SimulatorSession> connected_session;
 std::unique_ptr<kami::world::TerrainStream> live_terrain;
+kami::world::TerrainOnlyCapture live_land_capture;
 uint64_t live_uploaded_revision = 0;
 ULONGLONG live_last_upload_ms = 0;
 ULONGLONG live_last_status_ms = 0;
@@ -75,6 +76,7 @@ void start_login() {
   if (connected_session) connected_session->disconnect();
   connected_session.reset();
   live_terrain.reset();
+  live_land_capture.clear();
   live_uploaded_revision = 0;
   live_last_upload_ms = 0;
   SetWindowTextW(status_text,L"Connecting securely to the official Second Life login server...");
@@ -87,6 +89,35 @@ void start_login() {
     });
 }
 
+void save_land_capture(HWND window) {
+  if (live_land_capture.datagrams.empty()) {
+    MessageBoxW(window,L"No land packets have arrived yet. Log in and let the terrain load before pressing F8.",
+      L"KAMI - Terrain-only diagnostics",MB_OK|MB_ICONINFORMATION);
+    return;
+  }
+  wchar_t filename[32768]=L"KAMI-land-debug.kudp";
+  static constexpr wchar_t filter[]=L"KAMI terrain captures (*.kudp)\0*.kudp\0";
+  OPENFILENAMEW dialog{};
+  dialog.lStructSize=sizeof(dialog);
+  dialog.hwndOwner=window;
+  dialog.lpstrFilter=filter;
+  dialog.lpstrFile=filename;
+  dialog.nMaxFile=static_cast<DWORD>(sizeof(filename)/sizeof(filename[0]));
+  dialog.lpstrDefExt=L"kudp";
+  dialog.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;
+  if (!GetSaveFileNameW(&dialog)) return;
+  std::ofstream file(std::filesystem::path(filename),
+                     std::ios::binary|std::ios::trunc);
+  if (!file || !kami::world::write_land_capture(file,live_land_capture)) {
+    MessageBoxW(window,L"Failed to save the terrain-only capture. Check your destination and available space.",
+      L"KAMI",MB_OK|MB_ICONERROR);
+    return;
+  }
+  MessageBoxW(window,
+    L"Saved only simulator land-height packets, not credentials, avatar, chat, or inventory data.\n"
+    L"The file still contains your region heightmap. Share it only if you are comfortable doing so.",
+    L"KAMI - Terrain capture saved",MB_OK|MB_ICONINFORMATION);
+}
 void show_demo(HWND window) {
   for (HWND c : ui_controls) ShowWindow(c, SW_HIDE);
   if (login_panel) ShowWindow(login_panel, SW_HIDE);
@@ -136,6 +167,10 @@ LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
       start_login();
       return 0;
     }
+  }
+  if (msg == WM_KEYDOWN && wp == VK_F8) {
+    save_land_capture(hwnd);
+    return 0;
   }
   if (active_renderer && (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN ||
                           msg == WM_KEYUP || msg == WM_SYSKEYUP)) {
@@ -235,6 +270,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             SetWindowTextW(status_text,L"Login accepted; simulator circuit connection failed.");
           } else {
             live_terrain=std::make_unique<kami::world::TerrainStream>(256,256);
+            live_land_capture.clear();
             live_uploaded_revision=0;
             live_last_upload_ms=0;
             renderer.prepare_live_region();
@@ -246,6 +282,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         connected_session->tick();
         connected_session->poll([&](const kami::sl::Packet& packet,
                                     const kami::sl::MessageId&) {
+          kami::world::record_land_packet(live_land_capture,packet);
           live_terrain->ingest_packet(packet);
         },128);
         const ULONGLONG time=GetTickCount64();

@@ -291,7 +291,7 @@ void Dx12::frame() {
     wchar_t title[256]{};
     if (recorded_terrain) {
       swprintf_s(title,
-        L"KAMI DX12 [%s %.1f%% | heights %.0f..%.0fm] | %u FPS | Camera: %.1f, %.1f, %.1f",
+        L"KAMI DX12 [%s %.1f%% | heights %.0f..%.0fm] | %u FPS | F8: save land capture | Camera: %.1f, %.1f, %.1f",
         live_scene ? L"Second Life terrain" : L"Capture terrain",
         terrain_sample_coverage, terrain_min_y, terrain_max_y, measured_fps,
         camera_x, camera_y, camera_z);

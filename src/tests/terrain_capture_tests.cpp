@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "world/lludp.h"
 namespace {
 std::vector<uint8_t> flat_patch_packet() {
   std::vector<uint8_t> group;
@@ -54,4 +55,33 @@ int main() {
   std::istringstream empty("KAMIUDP1",std::ios::binary);
   assert(!kami::world::replay_capture(empty,stream,summary));
   assert(stream.revision()==old);
+  // A live LayerData packet can be reserialized without recording the
+  // source flags, packet ACKs or any other potentially sensitive messages.
+  kami::sl::Packet land;
+  assert(kami::sl::parse_packet(packet.data(),packet.size(),land));
+  kami::world::TerrainOnlyCapture sanitized;
+  assert(kami::world::record_land_packet(sanitized,land));
+  assert(sanitized.datagrams.size()==1);
+  assert(sanitized.total_bytes==packet.size());
+  assert(sanitized.datagrams[0][0]==0);
+  assert(sanitized.datagrams[0][4]==0);
+  kami::sl::Packet unrelated;
+  unrelated.payload={0x12,0x01,0x02};
+  assert(!kami::world::record_land_packet(sanitized,unrelated));
+  assert(sanitized.datagrams.size()==1);
+  std::ostringstream exported(std::ios::out|std::ios::binary);
+  assert(kami::world::write_land_capture(exported,sanitized));
+  assert(exported.str()==record(packet)); // sanitized header matches fixture
+  kami::world::TerrainStream restored;
+  kami::world::CaptureSummary restored_summary;
+  std::istringstream imported(exported.str(),std::ios::in|std::ios::binary);
+  assert(kami::world::replay_capture(imported,restored,restored_summary));
+  assert(restored.terrain().received_samples()==256);
+  // Writers must not accidentally persist unrelated simulator datagrams.
+  sanitized.datagrams[0][6]=0x03; // UseCircuitCode, not LandLayer
+  std::ostringstream refused(std::ios::binary);
+  assert(!kami::world::write_land_capture(refused,sanitized));
+  assert(refused.str().empty());
+  sanitized.clear();
+  assert(sanitized.datagrams.empty() && sanitized.total_bytes==0);
 }

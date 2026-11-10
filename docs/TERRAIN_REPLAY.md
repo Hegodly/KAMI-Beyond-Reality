@@ -37,3 +37,17 @@ part of a region — capture uses the region's 256x256 default, not parcel size.
 Acquiring packets from an authenticated simulator, secure login/MFA,
 CAPS/event queue, live objects, avatars, and inventory are outstanding. Offline
 replay proves only the packet-to-mesh integration path, not world readiness.
+
+## Capture live land packets for decoder diagnostics
+
+In the experimental live-login viewer, wait for terrain to load and press
+**F8**. Choose a local `.kudp` destination. The capture records only validly
+framed `LayerData` land-heightfield messages. It strips LLUDP flags, ACKs
+and sequence metadata; it never records login credentials, MFA codes, chat,
+avatar/object messages, or inventory. Nothing is uploaded automatically.
+
+The file **does contain your region heightmap**, including potentially
+recognizable terraforming. Only share it if that is acceptable. A bounded
+capture stores at most 2,048 land datagrams or 16 MiB. Files can be loaded
+with the login screen's **Load recorded terrain (.kudp)** button, and can
+be inspected offline to reproduce height-map discontinuities.
