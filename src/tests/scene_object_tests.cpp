@@ -17,7 +17,8 @@ void f32(std::vector<uint8_t>& b,float v){
 void vec(std::vector<uint8_t>& b,float x,float y,float z){f32(b,x);f32(b,y);f32(b,z);}
 void region(std::vector<uint8_t>& b){zeros(b,10);u8(b,1);}
 kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode=9,float root_z_rotation=0,uint8_t profile=255,
-                                 const std::vector<uint8_t>& texture_entry={}) {
+                                 const std::vector<uint8_t>& texture_entry={},
+                                 const std::vector<uint8_t>& mesh_extra={}) {
   std::vector<uint8_t> b{13};region(b);u32(b,0);
   std::vector<uint8_t> content;
   zeros(content,16);u32(content,id);u8(content,pcode);u8(content,0);
@@ -30,7 +31,8 @@ kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode
   if(profile!=255) {
     // Plain compressed volume with no extra params, followed by the
     // same 23-byte Path/Profile descriptor as ObjectUpdate.
-    u8(content,0); // ExtraParams count
+    if(mesh_extra.empty())u8(content,0); // ExtraParams count
+    else content.insert(content.end(),mesh_extra.begin(),mesh_extra.end());
     u8(content,0x10);u8(content,profile);
     u16(content,0);u16(content,0);
     u8(content,100);u8(content,100);
@@ -44,7 +46,8 @@ kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode
   kami::sl::Packet p;p.payload=std::move(b);return p;
 }
 kami::sl::Packet make_full(uint32_t id,uint8_t path_curve=0,uint8_t profile_curve=0,uint16_t path_cut=0,
-                           const std::vector<uint8_t>& texture_entry={}) {
+                           const std::vector<uint8_t>& texture_entry={},
+                           const std::vector<uint8_t>& mesh_extra={}) {
   std::vector<uint8_t> b{12};region(b);
   u32(b,id);u8(b,0);zeros(b,16);u32(b,0);
   u8(b,9);u8(b,0);u8(b,0);vec(b,2,4,6);
@@ -59,7 +62,9 @@ kami::sl::Packet make_full(uint32_t id,uint8_t path_curve=0,uint8_t profile_curv
   u16(b,static_cast<uint16_t>(texture_entry.size()));
   b.insert(b.end(),texture_entry.begin(),texture_entry.end());
   u8(b,0);u16(b,0);u16(b,0);
-  u8(b,0);zeros(b,4);u8(b,0);u8(b,0);u8(b,0);
+  u8(b,0);zeros(b,4);u8(b,0);u8(b,0);
+  u8(b,static_cast<uint8_t>(mesh_extra.size()));
+  b.insert(b.end(),mesh_extra.begin(),mesh_extra.end());
   zeros(b,16+16+4+1+4+1+12+12);
   kami::sl::Packet p;p.payload=std::move(b);return p;
 }
@@ -307,6 +312,23 @@ int main() {
       oriented_grandchild=true;
   }
   assert(oriented_grandchild);
+  // Real sculpt mesh reference from LLDataPacker ExtraParams:
+  // type 0x60, payload length 17, UUID and sculpt type 5.
+  std::vector<uint8_t> mesh_extra{1,0x60,0,17,0,0,0};
+  for(unsigned i=1;i<=16;++i)
+    mesh_extra.push_back(static_cast<uint8_t>(i));
+  mesh_extra.push_back(5);
+  kami::world::SceneObjects mesh_scene;
+  assert(mesh_scene.ingest(make_full(1001,0x10,0x01,0,{},mesh_extra)));
+  assert(mesh_scene.objects_with_mesh_asset()==1);
+  auto mesh_ids=mesh_scene.referenced_mesh_ids();
+  assert(mesh_ids.size()==1&&mesh_ids[0][0]==1&&mesh_ids[0][15]==16);
+  assert(mesh_scene.ingest(make_compressed(1002,0,9,0,0x01,{},mesh_extra)));
+  assert(mesh_scene.objects_with_mesh_asset()==2);
+  assert(mesh_scene.referenced_mesh_ids().size()==1);
+  assert(mesh_scene.ingest(make_kill(1001)));
+  assert(mesh_scene.ingest(make_kill(1002)));
+  assert(mesh_scene.referenced_mesh_ids().empty());
   scene.reset();
   assert(scene.total_objects()==0 && scene.revision()==0);
 }

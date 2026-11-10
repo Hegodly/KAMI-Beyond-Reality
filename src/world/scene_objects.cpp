@@ -1,5 +1,6 @@
 #include "scene_objects.h"
 #include "primitive_shapes.h"
+#include "mesh_discovery.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -34,6 +35,32 @@ struct Cursor {
   }
   bool var1() {uint8_t n=0;return u8(n)&&skip(n);}
   bool var2() {uint16_t n=0;return u16(n)&&skip(n);}
+  bool mesh_extra_var1(MeshExtra& mesh) {
+    uint8_t count=0;
+    if(!u8(count)||count>remain())return false;
+    if(count) {
+      MeshExtra decoded{};
+      if(find_mesh_extra(data.data()+pos,count,decoded))
+        mesh=decoded;
+    }
+    pos+=count;
+    return true;
+  }
+  bool mesh_extra_binary(MeshExtra& mesh,size_t boundary) {
+    const size_t begin=pos;
+    if(boundary>data.size()||pos>=boundary)return false;
+    uint8_t count=0;
+    if(!u8(count)||count>32)return false;
+    for(unsigned i=0;i<count;++i) {
+      uint16_t type=0;uint32_t bytes=0;
+      if(!u16(type)||!u32(bytes)||bytes>boundary-pos)return false;
+      pos+=bytes;
+    }
+    MeshExtra decoded{};
+    if(find_mesh_extra(data.data()+begin,pos-begin,decoded))
+      mesh=decoded;
+    return true;
+  }
   bool texture(TextureEntries& value,bool& malformed) {
     uint16_t count=0;
     if(!u16(count)||count>remain())return false;
@@ -126,7 +153,7 @@ bool parse_full(const std::vector<uint8_t>& data,size_t offset,
     if(!c.u32(ob.parent_id)||!c.u32(flags)||!read_shape(c,ob.shape)||
        !c.texture(ob.textures,malformed_texture)||!c.var1()||!c.var2()||!c.var2()||
        !c.var1()||!c.skip(4)||!c.var1()||!c.var1()||
-       !c.var1()||!c.skip(16+16+4+1+4+1+12+12)) return false;
+       !c.mesh_extra_var1(ob.mesh)||!c.skip(16+16+4+1+4+1+12+12)) return false;
     if(malformed_texture)++malformed_textures;
     if ((length==60||length==124) && plausible(ob) && normalize_rotation(ob))
       objects.push_back(ob);
@@ -163,8 +190,7 @@ bool parse_compressed(const std::vector<uint8_t>& data,size_t offset,
     // Those objects deliberately keep shape.valid=false until fully parsed.
     if(known && c.pos<end && (special&~0x20u)==0) {
       const size_t begin=c.pos;
-      uint8_t extras=0;
-      if(c.u8(extras) && extras==0 && end-c.pos>=23) {
+      if(c.mesh_extra_binary(ob.mesh,end) && end-c.pos>=23) {
         PrimitiveShape shape;
         if(read_shape(c,shape) && c.pos<=end) {
           ob.shape=shape;
@@ -279,6 +305,20 @@ size_t SceneObjects::renderable_prims() const {
     if(ob.pcode==9&&resolve_world_pose(objects_,ob,pose))++count;
   return count;
 }
+size_t SceneObjects::objects_with_mesh_asset() const {
+  size_t total=0;
+  for(const auto& [id,ob]:objects_)
+    if(ob.mesh.valid)++total;
+  return total;
+}
+std::vector<AssetId> SceneObjects::referenced_mesh_ids() const {
+  std::set<AssetId> ids;
+  for(const auto& [id,ob]:objects_) {
+    if(ob.mesh.valid)ids.insert(ob.mesh.mesh_id);
+    if(ids.size()>=512)break;
+  }
+  return {ids.begin(),ids.end()};
+}
 size_t SceneObjects::objects_with_face_colors() const {
   size_t count=0;
   for(const auto& [id,object]:objects_)
@@ -368,6 +408,8 @@ bool SceneObjects::ingest(const kami::sl::Packet& packet) {
         updated.textures=it->second.textures;
       if(!updated.shape.valid && it->second.shape.valid)
         updated.shape=it->second.shape;
+      if(!updated.mesh.valid && it->second.mesh.valid)
+        updated.mesh=it->second.mesh;
       it->second=std::move(updated);
     }
     ++revision_;++stats_.updated_objects;

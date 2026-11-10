@@ -4,6 +4,7 @@
 #include "texture_entries.h"
 #include "texture_atlas.h"
 #include "texture_asset_queue.h"
+#include "mesh_discovery.h"
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -35,6 +36,7 @@ struct SceneObject {
   float qx=0,qy=0,qz=0,qw=1;
   PrimitiveShape shape{};
   TextureEntries textures{};
+  MeshExtra mesh{};
 };
 struct SceneStats {
   uint64_t full_packets=0;
@@ -58,6 +60,8 @@ public:
   size_t visible_roots() const;
   size_t renderable_prims() const;
   size_t objects_with_face_colors() const;
+  size_t objects_with_mesh_asset() const;
+  std::vector<AssetId> referenced_mesh_ids() const;
   size_t unique_texture_references() const;
   std::vector<AssetId> referenced_texture_ids() const;
   size_t total_objects() const {return objects_.size();}
