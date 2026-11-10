@@ -43,6 +43,7 @@ std::future<CapabilityReply> cap_future;
 std::future<TextureDownload> texture_future;
 std::string pending_seed_cap;
 std::string live_viewerasset_cap;
+bool caps_discovery_failed=false;
 uint64_t world_generation=0;
 ULONGLONG last_texture_request_ms=0;
 kami::world::TerrainOnlyCapture live_land_capture;
@@ -100,6 +101,7 @@ void start_login() {
   ++world_generation;
   pending_seed_cap.clear();
   live_viewerasset_cap.clear();
+  caps_discovery_failed=false;
   last_texture_request_ms=0;
   if (connected_session) connected_session->disconnect();
   connected_session.reset();
@@ -308,6 +310,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             last_texture_catalog_revision=0;
             pending_seed_cap=std::move(outcome.seed_capability);
             live_viewerasset_cap.clear();
+            caps_discovery_failed=false;
             live_land_capture.clear();
             live_uploaded_object_revision=0;
             live_last_object_request_ms=0;
@@ -326,11 +329,17 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
          cap_future.wait_for(std::chrono::milliseconds(0))==std::future_status::ready) {
         try {
           auto reply=cap_future.get();
-          if(reply.generation==world_generation && reply.success &&
-             connected_session && live_objects)
-            live_viewerasset_cap=std::move(reply.cap.viewer_asset);
+          if(reply.generation==world_generation && connected_session && live_objects) {
+            if(reply.success) {
+              live_viewerasset_cap=std::move(reply.cap.viewer_asset);
+              caps_discovery_failed=false;
+            } else {
+              caps_discovery_failed=true;
+            }
+          }
         } catch(const std::exception&) {
           // Keep terrain and proxy rendering available if CAPS fail.
+          caps_discovery_failed=true;
         }
       }
       if(texture_future.valid() &&
@@ -387,8 +396,12 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
               [current,id,cap]() {
                 TextureDownload result;
                 result.generation=current;result.id=id;
-                result.success=kami::world::download_encoded_texture(
-                  cap,id,result.bytes);
+                try {
+                  result.success=kami::world::download_encoded_texture(
+                    cap,id,result.bytes);
+                } catch(const std::exception&) {
+                  result.success=false;
+                }
                 return result;
               });
             last_texture_request_ms=time;
@@ -436,6 +449,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         renderer.set_texture_stage_stats(asset_counts.encoded_ready,
                                          asset_counts.queued,
                                          asset_counts.in_flight);
+        renderer.set_asset_cap_state(!live_viewerasset_cap.empty()?2:
+          caps_discovery_failed?3:(cap_future.valid() || !pending_seed_cap.empty())?1:0);
         SetWindowTextW(status_text,message);
         live_last_status_ms=GetTickCount64();
       }
