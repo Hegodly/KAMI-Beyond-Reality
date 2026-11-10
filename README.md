@@ -141,7 +141,10 @@ from live TextureEntry records. DX12 passes the unwrapped coordinates through
 its vertex shader and computes repeated atlas samples **per pixel**, including
 negative and tiled UVs. Atlas lookups are bounded to their 64x64 source tile.
 A low-alpha fragment is discarded so transparent holes in foliage textures
-no longer show opaque rectangle backgrounds. This is an **alpha cutout** path,
+no longer show opaque rectangle backgrounds. The legacy TextureEntry
+fullbright bit is also honored by the DX12 shader, bypassing the viewer's
+generic diffuse sun shading for surfaces such as signs or illuminated displays.
+This is an **alpha cutout** path,
 not sorted alpha blending: glass, tinted windows and semi-transparent clothing
 still need a separate transparency render pass. Complex material transforms,
 correct physical lighting, and glTF/PBR remain unfinished.
