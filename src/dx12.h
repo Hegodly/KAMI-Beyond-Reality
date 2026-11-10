@@ -16,8 +16,8 @@ public:
   // Call from the render thread, after init().
   bool set_world_mesh(const world::TerrainMesh& mesh);
   bool set_region_terrain(const world::TerrainAssembler& terrain);
-  // Present actual simulator object locations as neutral primitive proxies.
-  // This is not texture/material/mesh-asset rendering yet.
+  // Submit live region terrain, approximated prims, and decoded static SL
+  // high-LOD mesh assets to DX12. Rigging/PBR remain separate work.
   bool set_region_scene(const world::TerrainAssembler& terrain,
                         const world::SceneObjects* objects,
                         const world::TextureAtlas* atlas=nullptr,
