@@ -16,7 +16,8 @@ void f32(std::vector<uint8_t>& b,float v){
 }
 void vec(std::vector<uint8_t>& b,float x,float y,float z){f32(b,x);f32(b,y);f32(b,z);}
 void region(std::vector<uint8_t>& b){zeros(b,10);u8(b,1);}
-kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode=9,float root_z_rotation=0,uint8_t profile=255) {
+kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode=9,float root_z_rotation=0,uint8_t profile=255,
+                                 const std::vector<uint8_t>& texture_entry={}) {
   std::vector<uint8_t> b{13};region(b);u32(b,0);
   std::vector<uint8_t> content;
   zeros(content,16);u32(content,id);u8(content,pcode);u8(content,0);
@@ -35,12 +36,15 @@ kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode
     u8(content,100);u8(content,100);
     zeros(content,9);
     u16(content,0);u16(content,0);u16(content,0);
+    u16(content,static_cast<uint16_t>(texture_entry.size()));
+    content.insert(content.end(),texture_entry.begin(),texture_entry.end());
   }
   u16(b,static_cast<uint16_t>(content.size()));
   b.insert(b.end(),content.begin(),content.end());
   kami::sl::Packet p;p.payload=std::move(b);return p;
 }
-kami::sl::Packet make_full(uint32_t id,uint8_t path_curve=0,uint8_t profile_curve=0,uint16_t path_cut=0) {
+kami::sl::Packet make_full(uint32_t id,uint8_t path_curve=0,uint8_t profile_curve=0,uint16_t path_cut=0,
+                           const std::vector<uint8_t>& texture_entry={}) {
   std::vector<uint8_t> b{12};region(b);
   u32(b,id);u8(b,0);zeros(b,16);u32(b,0);
   u8(b,9);u8(b,0);u8(b,0);vec(b,2,4,6);
@@ -52,10 +56,25 @@ kami::sl::Packet make_full(uint32_t id,uint8_t path_curve=0,uint8_t profile_curv
   u8(b,100);u8(b,100);
   zeros(b,9); // shear/twist/radius/taper/revolutions/skew
   u16(b,0);u16(b,0);u16(b,0); // profile begin/end/hollow
-  u16(b,0);u8(b,0);u16(b,0);u16(b,0);
+  u16(b,static_cast<uint16_t>(texture_entry.size()));
+  b.insert(b.end(),texture_entry.begin(),texture_entry.end());
+  u8(b,0);u16(b,0);u16(b,0);
   u8(b,0);zeros(b,4);u8(b,0);u8(b,0);u8(b,0);
   zeros(b,16+16+4+1+4+1+12+12);
   kami::sl::Packet p;p.payload=std::move(b);return p;
+}
+std::vector<uint8_t> colored_te() {
+  std::vector<uint8_t> te;
+  zeros(te,16);te[0]=0x34;u8(te,0); // default asset UUID
+  // Inverted SL RGBA. Face 2 is green; default is orange.
+  u8(te,0);u8(te,191);u8(te,223);u8(te,0);
+  u8(te,4);u8(te,255);u8(te,0);u8(te,255);u8(te,0);
+  u8(te,0); // end face color overrides
+  for(unsigned width: {4u,4u,2u,2u,2u,1u,1u,1u}) {
+    zeros(te,width);
+    u8(te,0);
+  }
+  return te;
 }
 kami::sl::Packet make_cached(uint32_t id) {
   std::vector<uint8_t> b{14};region(b);
@@ -150,6 +169,34 @@ int main() {
   assert(primitives.build_proxy_mesh(fallback));
   assert(fallback.vertices.size()==8);
   assert(fallback.indices.size()==36);
+  // Wire colors must survive the full and compressed scene decoders.
+  // Color overrides duplicate cube vertices so one painted face cannot
+  // accidentally paint adjacent faces that share original box vertices.
+  const auto te=colored_te();
+  kami::world::SceneObjects colored;
+  assert(colored.ingest(make_full(404,0x10,0x01,0,te)));
+  const auto* tinted=colored.get(404);
+  assert(tinted && tinted->textures.valid);
+  assert(tinted->textures.faces[0].texture_id[0]==0x34);
+  assert(tinted->textures.faces[2].rgba[0]==0);
+  assert(tinted->textures.faces[2].rgba[1]==255);
+  assert(colored.stats().textured_objects==1);
+  kami::world::TerrainMesh painted;
+  assert(colored.build_proxy_mesh(painted));
+  assert(painted.vertices.size()==36 && painted.indices.size()==36);
+  assert(std::fabs(painted.vertices[0].r-1.f)<0.001f);
+  assert(std::fabs(painted.vertices[0].g-64.f/255.f)<0.001f);
+  assert(std::fabs(painted.vertices[12].r-0.f)<0.001f);
+  assert(std::fabs(painted.vertices[12].g-1.f)<0.001f);
+  assert(colored.ingest(make_kill(404)));
+  assert(colored.ingest(make_compressed(405,0,9,0,0x01,te)));
+  const auto* compressed_color=colored.get(405);
+  assert(compressed_color && compressed_color->textures.valid);
+  kami::world::TerrainMesh painted_compressed;
+  assert(colored.build_proxy_mesh(painted_compressed));
+  assert(painted_compressed.vertices.size()==36);
+  assert(std::fabs(painted_compressed.vertices[12].g-1.f)<0.001f);
+  assert(colored.stats().textured_objects==2);
   // Parent rotation must rotate a child's local offset before moving
   // it into region space; orphaned or cyclic links must not be drawn.
   kami::world::SceneObjects links;
