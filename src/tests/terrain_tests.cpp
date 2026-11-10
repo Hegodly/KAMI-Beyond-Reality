@@ -32,6 +32,8 @@ int main() {
   assert(mesh.indices.size()==6);
   assert(terrain.sample_height_bilinear(.5f,.5f,elevation));
   assert(std::fabs(elevation-2.5f)<.001f);
+  assert(!terrain.sample_height_bilinear(-1.0f,.5f,elevation));
+  assert(!terrain.sample_height_bilinear(2.5f,2.5f,elevation));
   assert(terrain.sample_world_height(.5f,.5f,elevation));
   assert(std::fabs(elevation-2.5f)<.001f);
   float low=0,high=0;
