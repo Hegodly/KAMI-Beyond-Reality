@@ -2,6 +2,7 @@
 #include <cassert>
 #include <vector>
 #include <string>
+#include <algorithm>
 using namespace kami::world;
 namespace {
 void be32(std::vector<uint8_t>& data,uint32_t n){
@@ -27,6 +28,19 @@ std::vector<uint8_t> fixture(){
   for(int i=0;i<8;++i)d.push_back(0xa0+i);
   return d;
 }
+std::vector<uint8_t> sparse_fixture() {
+  std::vector<uint8_t> d{'{'};be32(d,2);
+  key(d,"high_lod");d.push_back('{');be32(d,2);
+  key(d,"offset");integer(d,UINT32_MAX); // SL sentinel: -1
+  key(d,"size");integer(d,0);
+  d.push_back('}');
+  key(d,"medium_lod");d.push_back('{');be32(d,2);
+  key(d,"offset");integer(d,0);
+  key(d,"size");integer(d,8);
+  d.push_back('}');d.push_back('}');
+  for(int i=0;i<8;++i)d.push_back(static_cast<uint8_t>(0xa0+i));
+  return d;
+}
 }
 int main(){
   auto blob=fixture();
@@ -35,6 +49,19 @@ int main(){
   assert(h.high.present&&h.high.offset==0&&h.high.size==8);
   assert(h.header_bytes+8==blob.size());
   assert(!h.medium.present);
+  auto sparse=sparse_fixture();
+  MeshAssetHeader fallback;
+  assert(parse_mesh_asset_header(sparse,fallback));
+  assert(!fallback.high.present && fallback.medium.present);
+  assert(fallback.medium.offset==0 && fallback.medium.size==8);
+  // A negative offset with a positive size is invalid, not a missing LOD.
+  auto inconsistent=sparse;
+  auto needle=std::vector<uint8_t>{'k',0,0,0,4,'s','i','z','e','i',0,0,0,0};
+  auto found=std::search(inconsistent.begin(),inconsistent.end(),
+                         needle.begin(),needle.end());
+  assert(found!=inconsistent.end());
+  found[13]=8;
+  assert(!parse_mesh_asset_header(inconsistent,fallback));
   // Modern SL assets may omit the deprecated binary LLSD preamble.
   auto without_preamble=blob;
   without_preamble.erase(without_preamble.begin(),
