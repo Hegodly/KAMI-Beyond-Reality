@@ -61,6 +61,11 @@ std::string make_login_request(const LoginCredentials& credentials) {
   if (!split_avatar_name(credentials.username,first,last) ||
       credentials.password.empty() || credentials.password.size()>1024 ||
       (credentials.start!="home"&&credentials.start!="last")) return {};
+  if (!credentials.token.empty() &&
+      (credentials.token.size()!=6 ||
+       !std::all_of(credentials.token.begin(),credentials.token.end(),
+         [](unsigned char c){return c>='0'&&c<='9';}))) return {};
+  if (credentials.mfa_hash.size()>512) return {};
   const std::string hash=legacy_password_hash(credentials.password);
   if (hash.empty()) return {};
   auto value=[](const char* name,const std::string& content) {
@@ -76,6 +81,8 @@ std::string make_login_request(const LoginCredentials& credentials) {
   out+=value("id0","00000000-0000-0000-0000-000000000000");
   out+=value("mac","00:00:00:00:00:00");
   out+=value("agree_to_tos","false")+value("read_critical","false");
+  // Both fields must be present for an MFA-capable third-party viewer.
+  out+=value("token",credentials.token)+value("mfa_hash",credentials.mfa_hash);
   out+="<member><name>options</name><value><array><data>"
        "<value><string>adult_compliant</string></value>"
        "</data></array></value></member></struct></value></param></params></methodCall>";

@@ -7,9 +7,15 @@ struct LoginCredentials {
   std::string username;
   std::string password;
   std::string start = "last";
+  // Six digits from the resident's authenticator, supplied for one request only.
+  std::string token;
+  // Empty unless a future secure, account-scoped cache is implemented.
+  std::string mfa_hash;
 };
 struct LoginResult {
   bool authenticated = false;
+  bool mfa_required = false;
+  std::string failure_reason;
   AuthenticatedSession session{};
   std::string seed_capability;
   std::string error;

@@ -94,8 +94,15 @@ bool parse_login_response(const std::string& xml, LoginResult& result) {
       return it==properties.end()?std::string():it->second;
     };
     if (get("login")!="true" && get("login")!="1") {
-      result.error=get("message");
-      if (result.error.empty()) result.error="Login was not accepted";
+      result.failure_reason=get("reason");
+      result.mfa_required=(result.failure_reason=="mfa_challenge");
+      if (result.mfa_required) {
+        result.error="Second Life requires a six-digit MFA code. Enter your authenticator code and your password, then retry.";
+      } else {
+        result.error=get("message");
+        if (result.error.empty()) result.error="Login rejected by the Second Life server";
+        if (result.error.size()>240) result.error.resize(240);
+      }
       parsed=true;
       break;
     }

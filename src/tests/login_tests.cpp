@@ -24,6 +24,14 @@ int main() {
   assert(request.find("$1$5f4dcc3b5aa765d61d8327deb882cf99")!=std::string::npos);
   assert(request.find(">password<")==std::string::npos);
   assert(make_login_request({"Example","password","nope"}).empty());
+  assert(request.find("<name>token</name>")!=std::string::npos);
+  assert(request.find("<name>mfa_hash</name>")!=std::string::npos);
+  credentials.token="123456";
+  auto mfa_request=make_login_request(credentials);
+  assert(mfa_request.find("<name>token</name><value><string>123456</string>")!=std::string::npos);
+  credentials.token="not a code";
+  assert(make_login_request(credentials).empty());
+  credentials.token.clear();
   LoginResult result;
   const std::string success=
     "<?xml version=\"1.0\"?><methodResponse><params><param><value><struct>"
@@ -45,5 +53,15 @@ int main() {
   const auto start=failed.find("<string>true</string>");
   failed.replace(start,21,"<string>false</string>");
   assert(parse_login_response(failed,result)&&!result.authenticated);
+  assert(!result.mfa_required);
+  auto challenge=valid;
+  const auto login_pos=challenge.find("<string>true</string>");
+  challenge.replace(login_pos,std::string("<string>true</string>").size(),"<string>false</string>");
+  const auto marker=challenge.find("</struct>");
+  challenge.insert(marker,"<member><name>reason</name><value><string>mfa_challenge</string></value></member>");
+  assert(parse_login_response(challenge,result));
+  assert(!result.authenticated && result.mfa_required);
+  assert(result.failure_reason=="mfa_challenge");
+  assert(result.error.find("six-digit MFA")!=std::string::npos);
   assert(!parse_login_response("<!DOCTYPE x><methodResponse/>",result));
 }
