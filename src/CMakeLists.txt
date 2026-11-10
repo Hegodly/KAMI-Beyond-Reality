@@ -60,9 +60,13 @@ add_test(NAME dx12_camera_projection_and_shader COMMAND kami_dx12_projection_tes
 # Official ObjectUpdate, ObjectUpdateCompressed, ObjectUpdateCached and KillObject
 # binary record fixtures; these are synthetic and contain no resident data.
 add_executable(kami_scene_object_tests
-  tests/scene_object_tests.cpp world/scene_objects.cpp world/mesh_discovery.cpp world/primitive_shapes.cpp world/texture_entries.cpp world/texture_asset_queue.cpp world/texture_atlas.cpp
+  tests/scene_object_tests.cpp world/scene_objects.cpp world/mesh_discovery.cpp
+  world/mesh_asset_queue.cpp world/mesh_asset_header.cpp world/mesh_geometry.cpp
+  world/primitive_shapes.cpp world/texture_entries.cpp world/texture_asset_queue.cpp
+  world/texture_atlas.cpp
   world/terrain.cpp world/region_protocol.cpp world/land_layer.cpp world/lludp.cpp)
 target_include_directories(kami_scene_object_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(kami_scene_object_tests PRIVATE zlibstatic)
 add_test(NAME second_life_scene_object_update_packets COMMAND kami_scene_object_tests)
 
 # Packed LL TextureEntry fields and per-face exception masks. No network or

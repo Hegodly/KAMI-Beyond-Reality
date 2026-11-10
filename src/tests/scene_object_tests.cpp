@@ -1,6 +1,9 @@
 #include "world/scene_objects.h"
 #include "world/lludp.h"
 #include <cassert>
+#include <zlib.h>
+#include <array>
+#include <string>
 #include <cmath>
 #include <cstring>
 #include <vector>
@@ -67,6 +70,42 @@ kami::sl::Packet make_full(uint32_t id,uint8_t path_curve=0,uint8_t profile_curv
   b.insert(b.end(),mesh_extra.begin(),mesh_extra.end());
   zeros(b,16+16+4+1+4+1+12+12);
   kami::sl::Packet p;p.payload=std::move(b);return p;
+}
+void be32(std::vector<uint8_t>& b,uint32_t n) {
+  u8(b,uint8_t(n>>24));u8(b,uint8_t(n>>16));
+  u8(b,uint8_t(n>>8));u8(b,uint8_t(n));
+}
+void llsd_key(std::vector<uint8_t>& b,const std::string& name) {
+  u8(b,'k');be32(b,static_cast<uint32_t>(name.size()));
+  b.insert(b.end(),name.begin(),name.end());
+}
+void llsd_binary(std::vector<uint8_t>& b,const std::vector<uint8_t>& bytes) {
+  u8(b,'b');be32(b,static_cast<uint32_t>(bytes.size()));
+  b.insert(b.end(),bytes.begin(),bytes.end());
+}
+std::vector<uint8_t> sample_mesh_asset() {
+  std::vector<uint8_t> lod{'['};be32(lod,1);
+  u8(lod,'{');be32(lod,2);
+  llsd_key(lod,"Position");
+  std::vector<uint8_t> positions;
+  for(int coord:{0,0,0,65535,0,0,0,65535,0})
+    u16(positions,static_cast<uint16_t>(coord));
+  llsd_binary(lod,positions);
+  llsd_key(lod,"TriangleList");
+  llsd_binary(lod,{0,0,1,0,2,0});
+  u8(lod,'}');u8(lod,']');
+  uLongf bound=compressBound(static_cast<uLong>(lod.size()));
+  std::vector<uint8_t> compressed(bound);
+  assert(compress2(compressed.data(),&bound,lod.data(),
+                   static_cast<uLong>(lod.size()),Z_BEST_SPEED)==Z_OK);
+  compressed.resize(bound);
+  std::vector<uint8_t> asset{'{'};be32(asset,1);
+  llsd_key(asset,"high_lod");u8(asset,'{');be32(asset,2);
+  llsd_key(asset,"offset");u8(asset,'i');be32(asset,0);
+  llsd_key(asset,"size");u8(asset,'i');be32(asset,uint32_t(compressed.size()));
+  u8(asset,'}');u8(asset,'}');
+  asset.insert(asset.end(),compressed.begin(),compressed.end());
+  return asset;
 }
 std::vector<uint8_t> colored_te() {
   std::vector<uint8_t> te;
@@ -326,6 +365,21 @@ int main() {
   assert(mesh_scene.ingest(make_compressed(1002,0,9,0,0x01,{},mesh_extra)));
   assert(mesh_scene.objects_with_mesh_asset()==2);
   assert(mesh_scene.referenced_mesh_ids().size()==1);
+  kami::world::MeshAssetQueue actual_meshes;
+  actual_meshes.reconcile(mesh_scene.referenced_mesh_ids());
+  assert(actual_meshes.take_pending(1)==mesh_ids);
+  assert(actual_meshes.finish(mesh_ids[0],sample_mesh_asset()));
+  assert(actual_meshes.stats().decoded_ready==1);
+  kami::world::TerrainMesh rendered_mesh;
+  assert(mesh_scene.build_proxy_mesh(rendered_mesh,1000,nullptr,&actual_meshes));
+  // Two objects point to the same downloaded 3-vertex triangle asset;
+  // KAMI must use actual triangles, not two 8-vertex proxy boxes.
+  assert(rendered_mesh.vertices.size()==6);
+  assert(rendered_mesh.indices.size()==6);
+  for(const auto& vertex:rendered_mesh.vertices) {
+    assert(vertex.y>=22.f&&vertex.y<=28.f);
+    assert(vertex.x>=-.5f&&vertex.x<=1.5f);
+  }
   assert(mesh_scene.ingest(make_kill(1001)));
   assert(mesh_scene.ingest(make_kill(1002)));
   assert(mesh_scene.referenced_mesh_ids().empty());
