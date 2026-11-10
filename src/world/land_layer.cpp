@@ -6,6 +6,9 @@ LandBitReader::LandBitReader(const uint8_t* bytes,size_t size):bytes_(bytes),siz
 size_t LandBitReader::bits_remaining() const {
   return bytes_ && bit_position_ <= size_*8 ? size_*8-bit_position_ : 0;
 }
+bool LandBitReader::read_u32(uint32_t& value) {
+  return read_bits(32,value);
+}
 bool LandBitReader::read_u16(uint16_t& value) {
   uint32_t raw=0;
   if (!read_bits(16,raw)) return false;
