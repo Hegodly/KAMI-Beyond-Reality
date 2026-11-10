@@ -1,6 +1,7 @@
 #include "dx12.h"
 #include "world/terrain_capture.h"
 #include "world/terrain_stream.h"
+#include "world/scene_objects.h"
 #include "world/login_protocol.h"
 #include "world/simulator_session.h"
 #include <future>
@@ -23,8 +24,11 @@ HWND mfa_input = nullptr;
 std::future<kami::sl::LoginResult> login_future;
 std::unique_ptr<kami::sl::SimulatorSession> connected_session;
 std::unique_ptr<kami::world::TerrainStream> live_terrain;
+std::unique_ptr<kami::world::SceneObjects> live_objects;
 kami::world::TerrainOnlyCapture live_land_capture;
 uint64_t live_uploaded_revision = 0;
+uint64_t live_uploaded_object_revision = 0;
+ULONGLONG live_last_object_request_ms = 0;
 ULONGLONG live_last_upload_ms = 0;
 ULONGLONG live_last_status_ms = 0;
 HWND status_text = nullptr;
@@ -76,8 +80,11 @@ void start_login() {
   if (connected_session) connected_session->disconnect();
   connected_session.reset();
   live_terrain.reset();
+  live_objects.reset();
   live_land_capture.clear();
   live_uploaded_revision = 0;
+  live_uploaded_object_revision = 0;
+  live_last_object_request_ms = 0;
   live_last_upload_ms = 0;
   SetWindowTextW(status_text,L"Connecting securely to the official Second Life login server...");
   login_future=std::async(std::launch::async,
@@ -270,7 +277,10 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             SetWindowTextW(status_text,L"Login accepted; simulator circuit connection failed.");
           } else {
             live_terrain=std::make_unique<kami::world::TerrainStream>(256,256);
+            live_objects=std::make_unique<kami::world::SceneObjects>();
             live_land_capture.clear();
+            live_uploaded_object_revision=0;
+            live_last_object_request_ms=0;
             live_uploaded_revision=0;
             live_last_upload_ms=0;
             renderer.prepare_live_region();
@@ -278,35 +288,48 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           }
         }
       }
-      if (connected_session && live_terrain) {
+      if (connected_session && live_terrain && live_objects) {
         connected_session->tick();
         connected_session->poll([&](const kami::sl::Packet& packet,
                                     const kami::sl::MessageId&) {
           kami::world::record_land_packet(live_land_capture,packet);
           live_terrain->ingest_packet(packet);
+          live_objects->ingest(packet);
         },128);
         const ULONGLONG time=GetTickCount64();
-        if (live_terrain->revision()!=live_uploaded_revision &&
-            time-live_last_upload_ms>=200 &&
-            renderer.set_region_terrain(live_terrain->terrain())) {
+        // Cache probes require explicit full-object requests. Send bounded
+        // batches, leaving the rest queued instead of flooding the simulator.
+        if(time-live_last_object_request_ms>=250) {
+          auto missing=live_objects->take_cache_misses(32);
+          if(!missing.empty())connected_session->request_objects(missing);
+          live_last_object_request_ms=time;
+        }
+        if ((live_terrain->revision()!=live_uploaded_revision ||
+             live_objects->revision()!=live_uploaded_object_revision) &&
+            time-live_last_upload_ms>=350 &&
+            renderer.set_region_scene(live_terrain->terrain(),live_objects.get())) {
           live_uploaded_revision=live_terrain->revision();
+          live_uploaded_object_revision=live_objects->revision();
           live_last_upload_ms=time;
           show_demo(window);
         }
       }
-      if (connected_session && live_terrain && GetTickCount64()-live_last_status_ms>=1000) {
+      if (connected_session && live_terrain && live_objects && GetTickCount64()-live_last_status_ms>=1000) {
         const auto& stats=live_terrain->stats();
-        wchar_t message[320]{};
+        const auto& objects=live_objects->stats();
+        wchar_t message[360]{};
         swprintf_s(message,
-          L"UDP: %llu | Land packets: %llu | Decoded: %llu\n"
-          L"Bad layer framing: %llu | Patch decoding failed: %llu\n"
-          L"Real land samples: %.1f%%",
+          L"UDP: %llu | Terrain: %llu decoded | Land: %.1f%%\n"
+          L"Scene: %zu prims | Object packets: %llu full, %llu compressed\n"
+          L"Cache probes: %llu | Invalid objects: %llu",
           static_cast<unsigned long long>(stats.packets),
-          static_cast<unsigned long long>(stats.land_packets),
           static_cast<unsigned long long>(stats.decoded),
-          static_cast<unsigned long long>(stats.malformed_layer),
-          static_cast<unsigned long long>(stats.invalid_patch),
-          live_terrain->terrain().completion_ratio()*100.0f);
+          live_terrain->terrain().completion_ratio()*100.0f,
+          live_objects->visible_roots(),
+          static_cast<unsigned long long>(objects.full_packets),
+          static_cast<unsigned long long>(objects.compressed_packets),
+          static_cast<unsigned long long>(objects.cached_packets),
+          static_cast<unsigned long long>(objects.invalid_packets));
         SetWindowTextW(status_text,message);
         live_last_status_ms=GetTickCount64();
       }

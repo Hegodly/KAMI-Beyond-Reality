@@ -122,8 +122,21 @@ void Dx12::init(HWND hwnd) {
   create_depth(desc.Width, desc.Height);
 }
 bool Dx12::set_region_terrain(const world::TerrainAssembler& terrain) {
+  return set_region_scene(terrain,nullptr);
+}
+bool Dx12::set_region_scene(const world::TerrainAssembler& terrain,
+                            const world::SceneObjects* objects) {
   world::TerrainMesh mesh;
-  if (!terrain.build_partial_render_mesh(mesh)) return false;
+  const bool has_land=terrain.build_partial_render_mesh(mesh);
+  world::TerrainMesh proxies;
+  const bool has_proxies=objects && objects->build_proxy_mesh(proxies,1000);
+  if (!has_land && !has_proxies) return false;
+  // Append prim proxy geometry without altering actual simulator terrain.
+  if(has_proxies) {
+    if(has_land) {
+      if(!world::append_mesh(mesh,proxies))return false;
+    } else mesh=std::move(proxies);
+  }
   if (!set_world_mesh(mesh)) return false;
   float low[3]{}, high[3]{};
   if (!recorded_terrain && world::mesh_bounds(mesh, low, high)) {
@@ -139,6 +152,7 @@ bool Dx12::set_region_terrain(const world::TerrainAssembler& terrain) {
     pitch = std::clamp(std::atan2(center_y - camera_y,
       center_z - camera_z), -1.15f, -0.08f);
   }
+  scene_proxy_roots=objects?std::min<size_t>(objects->visible_roots(),1000):0;
   terrain_sample_coverage = terrain.completion_ratio()*100.0f;
   terrain.min_max_received_heights(terrain_min_y,terrain_max_y);
   const auto continuity=terrain.measure_continuity();
@@ -294,9 +308,9 @@ void Dx12::frame() {
     wchar_t title[256]{};
     if (recorded_terrain) {
       swprintf_s(title,
-        L"KAMI DX12 [%s %.1f%% | %.0f..%.0fm | max step %.0fm seam %.0fm] | %u FPS | F8: save land capture | Camera: %.1f, %.1f, %.1f",
-        live_scene ? L"Second Life terrain" : L"Capture terrain",
-        terrain_sample_coverage, terrain_min_y, terrain_max_y,
+        L"KAMI DX12 [%s %.1f%% | %zu prim proxies | %.0f..%.0fm | max step %.0fm seam %.0fm] | %u FPS | F8: land capture | Camera: %.1f, %.1f, %.1f",
+        live_scene ? L"Second Life scene" : L"Capture terrain",
+        terrain_sample_coverage, scene_proxy_roots, terrain_min_y, terrain_max_y,
         terrain_max_step, terrain_max_patch_seam, measured_fps,
         camera_x, camera_y, camera_z);
     } else {

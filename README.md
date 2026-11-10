@@ -40,3 +40,19 @@ executable as your sole Second Life viewer.
 See [live connection notes](docs/LIVE_LOGIN.md) and
 [terrain replay](docs/TERRAIN_REPLAY.md).
 The project owner controls release decisions.
+
+## First live simulator object geometry
+
+KAMI now receives ObjectUpdate and ObjectUpdateCompressed LLUDP messages
+and recognizes ObjectUpdateCached cache probes and KillObject removal messages.
+The viewer can ask the authenticated simulator for uncached object updates.
+Recognized **root volume prims** appear as **neutral, untextured proxy boxes**
+at received simulator coordinates and sizes. This is a useful intermediate
+validation of object placement, **not** the correct visual representation
+of existing SL objects. Object meshes, PBR materials, textures, child-link
+transforms, avatar bodies and vegetation remain unsupported. The number of
+received and displayed prim proxies appears in the DX12 title bar.
+
+The cache-miss request path is best-effort; full UDP reliable-resend support
+and asset-fault recovery have not been implemented yet. Do not mistake
+a successful CI build for a successful live-object or inventory test.

@@ -4,6 +4,7 @@
 #include <dxgi1_4.h>
 #include <wrl/client.h>
 #include "world/terrain.h"
+#include "world/scene_objects.h"
 namespace kami {
 class Dx12 {
 public:
@@ -14,15 +15,21 @@ public:
   // Call from the render thread, after init().
   bool set_world_mesh(const world::TerrainMesh& mesh);
   bool set_region_terrain(const world::TerrainAssembler& terrain);
+  // Present actual simulator object locations as neutral primitive proxies.
+  // This is not texture/material/mesh-asset rendering yet.
+  bool set_region_scene(const world::TerrainAssembler& terrain,
+                        const world::SceneObjects* objects);
   bool showing_recorded_terrain() const { return recorded_terrain; }
   // Clear the demonstration index count until authenticated terrain arrives.
   void prepare_live_region() {
     recorded_terrain = false; live_scene = true; index_count = 0;
     terrain_sample_coverage = 0.0f;
+    scene_proxy_roots = 0;
   }
   void prepare_recorded_region() {
     recorded_terrain = false; live_scene = false;
     terrain_sample_coverage = 0.0f;
+    scene_proxy_roots = 0;
   }
   ~Dx12();
 private:
@@ -67,5 +74,6 @@ private:
   float terrain_max_y = 0.0f;
   float terrain_max_step = 0.0f;
   float terrain_max_patch_seam = 0.0f;
+  size_t scene_proxy_roots = 0;
 };
 }
