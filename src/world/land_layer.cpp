@@ -1,4 +1,6 @@
 #include "land_layer.h"
+#include <cstring>
+#include <cmath>
 namespace kami::sl {
 LandBitReader::LandBitReader(const uint8_t* bytes,size_t size):bytes_(bytes),size_(size){}
 size_t LandBitReader::bits_remaining() const {
@@ -24,6 +26,17 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   }
   bit_position_+=count;
   value=next;
+  return true;
+}
+bool read_land_patch_header(LandBitReader& reader,LandPatchHeader& header) {
+  uint32_t quant=0,dc=0,range=0,id=0;
+  if (!reader.read_bits(8,quant) || !reader.read_bits(32,dc) ||
+      !reader.read_bits(16,range) || !reader.read_bits(10,id)) return false;
+  float offset=0;
+  std::memcpy(&offset,&dc,sizeof(offset));
+  if (!std::isfinite(offset)) return false;
+  header={static_cast<uint8_t>(quant),offset,static_cast<uint16_t>(range),
+          static_cast<uint16_t>(id)};
   return true;
 }
 bool read_land_group_header(LandBitReader& reader,LandGroupHeader& header) {
