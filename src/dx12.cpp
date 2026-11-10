@@ -146,6 +146,7 @@ bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
     if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
         !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b)) return false;
   }
+  if (mesh.indices.size() % 3 != 0) return false;
   for (uint32_t i : mesh.indices) if (i >= mesh.vertices.size()) return false;
   sync();
   const auto& vertices = mesh.vertices;
