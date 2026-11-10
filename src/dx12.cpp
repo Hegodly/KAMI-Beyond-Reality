@@ -146,7 +146,7 @@ void Dx12::init(HWND hwnd) {
   create_depth(desc.Width, desc.Height);
 }
 bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
-  if (!device || mesh.vertices.empty() || mesh.indices.empty() ||
+  if (!device || !world::validate_mesh(mesh) || mesh.vertices.empty() || mesh.indices.empty() ||
       mesh.vertices.size() > UINT_MAX / sizeof(world::TerrainVertex) ||
       mesh.indices.size() > UINT_MAX / sizeof(uint32_t)) return false;
   for (const auto& v : mesh.vertices) {
