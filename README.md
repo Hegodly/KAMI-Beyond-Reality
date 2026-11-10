@@ -31,9 +31,11 @@ UseCircuitCode, CompleteAgentMovement, RegionHandshakeReply and repeated
 AgentUpdate messages. Any decodable LandLayer terrain packets received from
 that authenticated simulator connection are uploaded to DX12.
 
-**Limitations:** MFA, policy acknowledgement flows, complete CAPS/EventQueueGet,
-avatar/object updates, mesh assets, textures, inventory, and full agent
-simulation are not finished. The login may be rejected or the world may stay
+**Limitations:** Some account MFA/policy acknowledgement cases, complete
+CAPS/EventQueueGet, avatar rendering, mesh assets, textures, inventory, and
+full agent simulation are not finished. Basic simulator object updates and
+primitive proxies are implemented, but are not a substitute for complete
+asset and scene loading. The login may be rejected or the world may stay
 blank until these are implemented and validated. Do not use this development
 executable as your sole Second Life viewer.
 
@@ -46,12 +48,19 @@ The project owner controls release decisions.
 KAMI now receives ObjectUpdate and ObjectUpdateCompressed LLUDP messages
 and recognizes ObjectUpdateCached cache probes and KillObject removal messages.
 The viewer can ask the authenticated simulator for uncached object updates.
-Recognized **root volume prims** appear as **neutral, untextured proxy boxes**
-at received simulator coordinates and sizes. This is a useful intermediate
+Recognized volume prims appear as **neutral, untextured shape proxies**
+at received simulator coordinates and sizes. KAMI can interpret the official
+path/profile wire fields for simple uncut boxes, cylinders, triangular prisms
+and sphere-like volumes. The renderer also follows parent/child linkset
+transformations with bounded depth, skipping missing or cyclic parent chains.
+Unsupported custom, hollow, twisted, tapered, sculpted or mesh shapes fall
+back to neutral bounding-box proxies rather than fabricated geometry. This is a useful intermediate
 validation of object placement, **not** the correct visual representation
 of existing SL objects. Object meshes, PBR materials, textures, child-link
 transforms, avatar bodies and vegetation remain unsupported. The number of
-received and displayed prim proxies appears in the DX12 title bar.
+renderable primitive proxies (including resolvable child links) appears in the
+DX12 title bar. The quality and correctness of live object appearance still
+require a real simulator test.
 
 Cache-miss requests now have bounded, acknowledged UDP retries. Complete
 reliability for the rest of the simulator protocol, re-requesting missing
