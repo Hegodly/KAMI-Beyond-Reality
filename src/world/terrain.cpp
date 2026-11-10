@@ -1,6 +1,7 @@
 #include "terrain.h"
 #include "region_protocol.h"
 #include "land_layer.h"
+#include "lludp.h"
 #include <cmath>
 #include <algorithm>
 #include <limits>
@@ -41,6 +42,11 @@ bool TerrainAssembler::sample_height_bilinear(float x,float y,float& elevation) 
   const float fx=x-float(ix), fy=y-float(iy);
   elevation=(a*(1-fx)+b*fx)*(1-fy)+(c*(1-fx)+d*fx)*fy;
   return std::isfinite(elevation);
+}
+bool TerrainAssembler::apply_land_packet(const kami::sl::Packet& packet) {
+  std::vector<uint8_t> compressed;
+  return kami::sl::extract_land_layer_data(packet,compressed) &&
+    apply_land_layer(compressed.data(),compressed.size());
 }
 bool TerrainAssembler::apply_land_layer(const uint8_t* bytes,size_t size) {
   std::vector<TerrainPatch> patches;
