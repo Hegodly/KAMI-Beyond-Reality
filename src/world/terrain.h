@@ -26,6 +26,7 @@ private:
 // Combines independently decoded region terrain and scene geometry into one draw mesh.
 bool append_mesh(TerrainMesh& destination, const TerrainMesh& source);
 TerrainMesh make_box_mesh(float x, float y, float z, float sx, float sy, float sz);
+TerrainMesh make_ground_plane(float size, float elevation);
 TerrainMesh make_terrain_mesh(const Heightfield& heights);
 Heightfield make_demo_heightfield(uint32_t side = 129);
 }
