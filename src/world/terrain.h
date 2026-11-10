@@ -21,6 +21,7 @@ public:
   float completion_ratio() const;
   void reset();
   bool has_sample(uint32_t x, uint32_t y) const;
+  size_t missing_samples() const;
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
