@@ -27,6 +27,11 @@ private:
   Microsoft::WRL::ComPtr<ID3D12RootSignature> root_signature;
   Microsoft::WRL::ComPtr<ID3D12PipelineState> pipeline;
   Microsoft::WRL::ComPtr<ID3D12Resource> vertex_buffer;
+  Microsoft::WRL::ComPtr<ID3D12Resource> index_buffer;
+  Microsoft::WRL::ComPtr<ID3D12Resource> depth_buffer;
+  Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsv_heap;
+  D3D12_INDEX_BUFFER_VIEW index_view{};
+  UINT index_count = 0;
   D3D12_VERTEX_BUFFER_VIEW vertex_view{};
   D3D12_VIEWPORT viewport{};
   D3D12_RECT scissor{};
