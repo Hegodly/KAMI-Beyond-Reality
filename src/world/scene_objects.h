@@ -1,6 +1,7 @@
 #pragma once
 #include "lludp.h"
 #include "terrain.h"
+#include "texture_entries.h"
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -31,6 +32,7 @@ struct SceneObject {
   float sx=1,sy=1,sz=1;
   float qx=0,qy=0,qz=0,qw=1;
   PrimitiveShape shape{};
+  TextureEntries textures{};
 };
 struct SceneStats {
   uint64_t full_packets=0;
@@ -40,6 +42,8 @@ struct SceneStats {
   uint64_t invalid_packets=0;
   uint64_t unsupported_objects=0;
   uint64_t updated_objects=0;
+  uint64_t textured_objects=0;
+  uint64_t invalid_texture_entries=0;
   uint64_t requested_cache_misses=0;
 };
 class SceneObjects {

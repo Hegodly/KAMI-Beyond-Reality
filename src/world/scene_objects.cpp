@@ -33,6 +33,17 @@ struct Cursor {
   }
   bool var1() {uint8_t n=0;return u8(n)&&skip(n);}
   bool var2() {uint16_t n=0;return u16(n)&&skip(n);}
+  bool texture(TextureEntries& value,bool& malformed) {
+    uint16_t count=0;
+    if(!u16(count)||count>remain())return false;
+    const uint8_t* start=data.data()+pos;
+    pos+=count;
+    if(count==0)return true;
+    if(!parse_texture_entries(start,count,value)) {
+      malformed=true; // Keep object geometry, but never use wrong color.
+    }
+    return true;
+  }
 };
 bool normalize_rotation(SceneObject& ob) {
   const double length=double(ob.qx)*ob.qx+double(ob.qy)*ob.qy+
@@ -109,8 +120,9 @@ bool parse_full(const std::vector<uint8_t>& data,size_t offset,
     }
     c.pos=start+length;
     uint32_t flags=0;
+    bool malformed_texture=false;
     if(!c.u32(ob.parent_id)||!c.u32(flags)||!read_shape(c,ob.shape)||
-       !c.var2()||!c.var1()||!c.var2()||!c.var2()||
+       !c.texture(ob.textures,malformed_texture)||!c.var1()||!c.var2()||!c.var2()||
        !c.var1()||!c.skip(4)||!c.var1()||!c.var1()||
        !c.var1()||!c.skip(16+16+4+1+4+1+12+12)) return false;
     if ((length==60||length==124) && plausible(ob) && normalize_rotation(ob))
@@ -150,7 +162,22 @@ bool parse_compressed(const std::vector<uint8_t>& data,size_t offset,
       uint8_t extras=0;
       if(c.u8(extras) && extras==0 && end-c.pos>=23) {
         PrimitiveShape shape;
-        if(read_shape(c,shape)) ob.shape=shape;
+        if(read_shape(c,shape) && c.pos<=end) {
+          ob.shape=shape;
+          // A compressed data-packer stores the TextureEntry field as
+          // a little-endian U16 length followed by its packed contents.
+          if(end-c.pos>=2) {
+            uint16_t count=0;
+            if(c.u16(count) && count<=end-c.pos) {
+              if(count!=0) {
+                TextureEntries parsed;
+                if(parse_texture_entries(data.data()+c.pos,count,parsed))
+                  ob.textures=std::move(parsed);
+              }
+              c.pos+=count;
+            }
+          }
+        }
       } else c.pos=begin;
     }
     if(known && c.pos<=end && plausible(ob) && normalize_rotation(ob))
@@ -287,6 +314,7 @@ bool SceneObjects::ingest(const kami::sl::Packet& packet) {
     return true;
   }
   for(const auto& ob:received) {
+    if(ob.textures.valid) ++stats_.textured_objects;
     missing_.erase(ob.local_id);
     auto it=objects_.find(ob.local_id);
     if(it==objects_.end()) {
@@ -311,7 +339,16 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit) const {
       vertex.x=pose.x+x-127.5f;
       vertex.y=pose.z+z;
       vertex.z=pose.y+y-32.f;
-      vertex.r=0.47f;vertex.g=0.47f;vertex.b=0.55f;
+      // Use the default TE face tint only when valid. Per-face color,
+      // alpha blending, fetched textures and PBR remain separate work.
+      if(ob.textures.valid) {
+        const auto& color=ob.textures.faces[0].rgba;
+        vertex.r=float(color[0])/255.f;
+        vertex.g=float(color[1])/255.f;
+        vertex.b=float(color[2])/255.f;
+      } else {
+        vertex.r=0.47f;vertex.g=0.47f;vertex.b=0.55f;
+      }
     }
     if(!append_mesh(scene,prim))return false;
     ++count;
