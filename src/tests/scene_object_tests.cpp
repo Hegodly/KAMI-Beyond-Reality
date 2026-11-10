@@ -207,9 +207,23 @@ int main() {
   assert(colored.stats().invalid_texture_entries==1);
   assert(colored.objects_with_face_colors()==1);
   assert(colored.unique_texture_references()==1);
+  const auto refs=colored.referenced_texture_ids();
+  assert(refs.size()==1);
+  assert(refs[0][0]==0x34);
+  // Asset queue mirrors the currently visible object graph. Killing or
+  // replacing objects must prune obsolete encoded assets and stale work.
+  kami::world::TextureAssetQueue queue;
+  queue.reconcile(refs);
+  assert(queue.entries()==1);
+  assert(queue.stats().queued==1);
+  assert(queue.take_pending(1).size()==1);
+  assert(queue.stats().in_flight==1);
   assert(colored.ingest(make_kill(404)));
   assert(colored.objects_with_face_colors()==0);
   assert(colored.unique_texture_references()==0);
+  queue.reconcile(colored.referenced_texture_ids());
+  assert(queue.entries()==0);
+  assert(!queue.finish(refs[0],{0xff,0x4f,0xff,0x51,0,0,0,0,0,0,0,0}));
   assert(colored.ingest(make_compressed(405,0,9,0,0x01,te)));
   const auto* compressed_color=colored.get(405);
   assert(compressed_color && compressed_color->textures.valid);
