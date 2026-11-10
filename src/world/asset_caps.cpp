@@ -5,6 +5,9 @@
 #include <wrl/client.h>
 #include <algorithm>
 #include <cctype>
+#include <cwctype>
+#include <cwchar>
+#include <utility>
 #include <memory>
 #include <string>
 #include <vector>
