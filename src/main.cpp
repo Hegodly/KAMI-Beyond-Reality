@@ -44,10 +44,10 @@ void create_login(HWND window, HINSTANCE instance) {
     WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
     150, 49, 320, 26, login_panel, nullptr, instance, nullptr);
   CreateWindowW(L"BUTTON", L"Log in (not yet available)",
-    WS_CHILD | WS_VISIBLE | WS_TABSTOP, 14, 92, 235, 32,
+    WS_CHILD | WS_VISIBLE | WS_TABSTOP, 38, 270, 235, 32,
     window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(LOGIN_BUTTON)), instance, nullptr);
   CreateWindowW(L"BUTTON", L"Explore DX12 demo",
-    WS_CHILD | WS_VISIBLE | WS_TABSTOP, 260, 92, 210, 32,
+    WS_CHILD | WS_VISIBLE | WS_TABSTOP, 284, 270, 210, 32,
     window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(DEMO_BUTTON)), instance, nullptr);
   status_text = CreateWindowW(L"STATIC",
     L"Login requires secure SL authentication and MFA integration. Do not enter a password.",
@@ -62,7 +62,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     wc.lpszClassName = L"KAMIWindow";
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     if (!RegisterClassW(&wc)) return 1;
-    HWND window = CreateWindowExW(0, wc.lpszClassName, L"KAMI - Beyond Reality | DX12 development", WS_OVERLAPPEDWINDOW,
+    HWND window = CreateWindowExW(0, wc.lpszClassName, L"KAMI - Beyond Reality | DX12 development", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
       CW_USEDEFAULT, CW_USEDEFAULT, 1280, 720, nullptr, nullptr, inst, nullptr);
     if (!window) return 1;
     kami::Dx12 renderer;
@@ -70,6 +70,9 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     active_renderer = &renderer;
     create_login(window, inst);
     ShowWindow(window, show);
+    ShowWindow(login_panel, SW_SHOW);
+    UpdateWindow(window);
+    SetFocus(username_input);
     MSG msg{};
     for (;;) {
       while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
