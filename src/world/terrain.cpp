@@ -31,6 +31,8 @@ TerrainMesh make_terrain_mesh(const Heightfield& h) {
   if (!h.valid() || !std::isfinite(h.spacing) || h.spacing <= 0.0f)
     throw std::invalid_argument("Invalid heightfield");
   TerrainMesh mesh;
+  if (h.elevations.size() > UINT32_MAX)
+    throw std::invalid_argument("Terrain mesh exceeds 32-bit index capacity");
   mesh.vertices.reserve(h.elevations.size());
   for (uint32_t z = 0; z < h.height; ++z)
     for (uint32_t x = 0; x < h.width; ++x) {
