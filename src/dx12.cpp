@@ -66,7 +66,9 @@ void Dx12::init(HWND hwnd) {
     };
     VSOutput VSMain(VSInput input) {
       VSOutput output;
-      output.position = mul(view_projection, float4(input.position, 1.0));
+      // DirectXMath supplies a transposed row-vector view/projection matrix.
+      // Match that storage with vector * matrix (not matrix * vector).
+      output.position = mul(float4(input.position, 1.0), view_projection);
       output.color = input.color;
       output.world_position = input.position;
       return output;
@@ -157,11 +159,17 @@ bool Dx12::set_region_terrain(const world::TerrainAssembler& terrain) {
   if (!set_world_mesh(mesh)) return false;
   float low[3]{}, high[3]{};
   if (!recorded_terrain && world::mesh_bounds(mesh, low, high)) {
-    camera_x = 0.5f * (low[0] + high[0]);
-    camera_y = high[1] + std::max(8.0f, 0.2f * (high[0] - low[0]));
-    camera_z = low[2] - std::max(15.0f, 0.3f * (high[2] - low[2]));
+    const float center_x = 0.5f * (low[0] + high[0]);
+    const float center_y = 0.5f * (low[1] + high[1]);
+    const float center_z = 0.5f * (low[2] + high[2]);
+    camera_x = center_x;
+    camera_y = high[1] + std::max(12.0f, 0.22f * (high[0] - low[0]));
+    camera_z = low[2] - std::max(25.0f, 0.3f * (high[2] - low[2]));
     yaw = 0.0f;
-    pitch = -0.25f;
+    // Aim at the actual received mesh, not a hardcoded pitch that can
+    // point above an elevated or incomplete region.
+    pitch = std::clamp(std::atan2(center_y - camera_y,
+      center_z - camera_z), -1.15f, -0.08f);
   }
   recorded_terrain = true;
   return true;
