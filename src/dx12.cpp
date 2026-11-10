@@ -171,20 +171,24 @@ bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
   ok(next_vertex_buffer->Map(0, &read_range, &mapped));
   std::memcpy(mapped, vertices.data(), static_cast<size_t>(resource.Width));
   next_vertex_buffer->Unmap(0, nullptr);
-  vertex_view.BufferLocation = next_vertex_buffer->GetGPUVirtualAddress();
-  vertex_view.SizeInBytes = static_cast<UINT>(resource.Width);
-  vertex_view.StrideInBytes = sizeof(world::TerrainVertex);
+  D3D12_VERTEX_BUFFER_VIEW next_vertex_view{};
+  next_vertex_view.BufferLocation = next_vertex_buffer->GetGPUVirtualAddress();
+  next_vertex_view.SizeInBytes = static_cast<UINT>(resource.Width);
+  next_vertex_view.StrideInBytes = sizeof(world::TerrainVertex);
   resource.Width = indices.size() * sizeof(uint32_t);
   ok(device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &resource,
     D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&next_index_buffer)));
   ok(next_index_buffer->Map(0, &read_range, &mapped));
   std::memcpy(mapped, indices.data(), static_cast<size_t>(resource.Width));
   next_index_buffer->Unmap(0, nullptr);
-  index_view.BufferLocation = next_index_buffer->GetGPUVirtualAddress();
-  index_view.SizeInBytes = static_cast<UINT>(resource.Width);
-  index_view.Format = DXGI_FORMAT_R32_UINT;
+  D3D12_INDEX_BUFFER_VIEW next_index_view{};
+  next_index_view.BufferLocation = next_index_buffer->GetGPUVirtualAddress();
+  next_index_view.SizeInBytes = static_cast<UINT>(resource.Width);
+  next_index_view.Format = DXGI_FORMAT_R32_UINT;
   vertex_buffer = std::move(next_vertex_buffer);
   index_buffer = std::move(next_index_buffer);
+  vertex_view = next_vertex_view;
+  index_view = next_index_view;
   index_count = new_index_count;
   return true;
 }
