@@ -6,6 +6,10 @@ LandBitReader::LandBitReader(const uint8_t* bytes,size_t size):bytes_(bytes),siz
 size_t LandBitReader::bits_remaining() const {
   return bytes_ && bit_position_ <= size_*8 ? size_*8-bit_position_ : 0;
 }
+bool LandBitReader::align_to_byte() {
+  const size_t padding=(8-bit_position_%8)%8;
+  return skip_bits(padding);
+}
 bool LandBitReader::skip_bits(size_t count) {
   if (count>bits_remaining()) return false;
   bit_position_+=count;
