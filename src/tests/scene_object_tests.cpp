@@ -204,7 +204,12 @@ int main() {
   assert(colored.ingest(make_full(404,0x10,0x01,0,broken_te)));
   assert(colored.get(404)->textures.valid);
   assert(colored.get(404)->textures.faces[2].rgba[1]==255);
+  assert(colored.stats().invalid_texture_entries==1);
+  assert(colored.objects_with_face_colors()==1);
+  assert(colored.unique_texture_references()==1);
   assert(colored.ingest(make_kill(404)));
+  assert(colored.objects_with_face_colors()==0);
+  assert(colored.unique_texture_references()==0);
   assert(colored.ingest(make_compressed(405,0,9,0,0x01,te)));
   const auto* compressed_color=colored.get(405);
   assert(compressed_color && compressed_color->textures.valid);
@@ -213,6 +218,8 @@ int main() {
   assert(painted_compressed.vertices.size()==36);
   assert(std::fabs(painted_compressed.vertices[12].g-1.f)<0.001f);
   assert(colored.stats().textured_objects==2);
+  assert(colored.objects_with_face_colors()==1);
+  assert(colored.unique_texture_references()==1);
   // Parent rotation must rotate a child's local offset before moving
   // it into region space; orphaned or cyclic links must not be drawn.
   kami::world::SceneObjects links;

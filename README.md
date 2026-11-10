@@ -66,3 +66,20 @@ Cache-miss requests now have bounded, acknowledged UDP retries. Complete
 reliability for the rest of the simulator protocol, re-requesting missing
 assets and asset-fault recovery have not been implemented yet. Do not mistake
 a successful CI build for a successful live-object or inventory test.
+
+## Received TextureEntry colors (not downloaded image textures)
+
+KAMI now parses the legacy LL `TextureEntry` default and face-override
+fields from full and supported compressed ObjectUpdate messages. For simple
+uncut box proxies, KAMI duplicates face vertices to apply separate **received
+face RGB colors**; other proxies use a default face tint. This is strictly
+wire-derived color information and is **not** JPEG2000 texture decoding,
+UV mapping, alpha blending, legacy material rendering, or glTF PBR.
+
+The viewer status panel distinguishes **color entries** from **texture UUIDs
+(not fetched)**. A nonzero texture UUID means the simulator referenced an
+asset; it does not mean an image has been downloaded or rendered. The parser
+bounds input to 4096 bytes and at most 45 faces, ignores malformed appearance
+fields without inventing colors, and retains verified appearance across
+incremental object updates. Asset fetch and decode are the next distinct
+workstream, not yet wired into the live DX12 draw path.
