@@ -4,6 +4,17 @@ LandBitReader::LandBitReader(const uint8_t* bytes,size_t size):bytes_(bytes),siz
 size_t LandBitReader::bits_remaining() const {
   return bytes_ && bit_position_ <= size_*8 ? size_*8-bit_position_ : 0;
 }
+bool LandBitReader::read_signed_bits(unsigned count,int32_t& value) {
+  if (!count || count>32) return false;
+  uint32_t raw=0;
+  if (!read_bits(count,raw)) return false;
+  if (count==32) value=static_cast<int32_t>(raw);
+  else {
+    const uint32_t sign=uint32_t(1)<<(count-1);
+    value=static_cast<int32_t>((raw^sign)-sign);
+  }
+  return true;
+}
 bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   if (count>32 || count>bits_remaining()) return false;
   uint32_t next=0;
