@@ -138,3 +138,9 @@ add_executable(kami_mesh_geometry_tests tests/mesh_geometry_tests.cpp
 target_include_directories(kami_mesh_geometry_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(kami_mesh_geometry_tests PRIVATE zlibstatic)
 add_test(NAME binary_llsd_mesh_lod_triangles_and_uv COMMAND kami_mesh_geometry_tests)
+
+# zlib license accompanies KAMI's statically linked mesh-asset inflater.
+if(EXISTS "${zlib_SOURCE_DIR}/LICENSE")
+  configure_file("${zlib_SOURCE_DIR}/LICENSE"
+                 "${CMAKE_CURRENT_BINARY_DIR}/zlib-LICENSE.txt" COPYONLY)
+endif()
