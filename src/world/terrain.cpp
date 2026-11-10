@@ -40,6 +40,7 @@ size_t TerrainAssembler::renderable_cells() const {
 bool TerrainAssembler::build_partial_render_mesh(TerrainMesh& output) const {
   TerrainMesh candidate;
   const auto& h = heights_;
+  if (renderable_cells() > UINT32_MAX / 4) return false;
   for (uint32_t y = 0; y + 1 < h.height; ++y)
     for (uint32_t x = 0; x + 1 < h.width; ++x) {
       if (!has_sample(x,y) || !has_sample(x+1,y) ||
