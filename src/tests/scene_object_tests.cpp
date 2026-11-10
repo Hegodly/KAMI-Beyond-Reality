@@ -122,9 +122,12 @@ std::vector<uint8_t> colored_te() {
   u8(te,0);u8(te,191);u8(te,223);u8(te,0);
   u8(te,4);u8(te,255);u8(te,0);u8(te,255);u8(te,127);
   u8(te,0); // end face color overrides
+  unsigned field=0;
   for(unsigned width: {4u,4u,2u,2u,2u,1u,1u,1u}) {
     zeros(te,width);
+    if(field==5) {u8(te,4);u8(te,0x20);} // bump: face 2 fullbright
     u8(te,0);
+    ++field;
   }
   return te;
 }
@@ -241,6 +244,8 @@ int main() {
   assert(std::fabs(painted.vertices[12].r-0.f)<0.001f);
   assert(std::fabs(painted.vertices[12].g-1.f)<0.001f);
   assert(std::fabs(painted.vertices[12].alpha-128.f/255.f)<0.001f);
+  assert(painted.vertices[12].fullbright==1.f);
+  assert(painted.vertices[0].fullbright==0.f);
   assert(std::fabs(painted.vertices[0].alpha-1.f)<0.001f);
   kami::world::TextureAtlas atlas;
   kami::world::AssetId source{};
