@@ -71,7 +71,9 @@ int main() {
   assert(sanitized.datagrams.size()==1);
   std::ostringstream exported(std::ios::out|std::ios::binary);
   assert(kami::world::write_land_capture(exported,sanitized));
-  assert(exported.str()==record(packet)); // sanitized header matches fixture
+  // The exported packet intentionally has a zeroed sequence, unlike the
+  // original simulator datagram. Verify the sanitized serialization.
+  assert(exported.str()==record(sanitized.datagrams[0]));
   kami::world::TerrainStream restored;
   kami::world::CaptureSummary restored_summary;
   std::istringstream imported(exported.str(),std::ios::in|std::ios::binary);
