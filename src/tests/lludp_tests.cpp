@@ -1,0 +1,21 @@
+#include "world/lludp.h"
+#include <cassert>
+#include <cstdint>
+int main() {
+  using kami::sl::Packet;
+  using kami::sl::parse_packet;
+  Packet p;
+  const uint8_t plain[] = {0,0,0,0,1,0,0xAA,0xBB};
+  assert(parse_packet(plain,sizeof(plain),p));
+  assert(p.sequence==1 && p.payload.size()==2 && p.payload[0]==0xAA);
+  const uint8_t encoded[] = {0x80,0,0,0,2,0,0x11,0,3,0x22};
+  assert(parse_packet(encoded,sizeof(encoded),p));
+  assert(p.payload.size()==5 && p.payload[1]==0 && p.payload[3]==0);
+  const uint8_t ack[] = {0x10,0,0,0,3,0,0x77,0,0,0,9,1};
+  assert(parse_packet(ack,sizeof(ack),p));
+  assert(p.appended_acks.size()==1 && p.appended_acks[0]==9 && p.payload.size()==1);
+  const uint8_t invalid[] = {0x80,0,0,0,4,0,0};
+  assert(!parse_packet(invalid,sizeof(invalid),p));
+  const uint8_t short_packet[] = {0,0,0};
+  assert(!parse_packet(short_packet,sizeof(short_packet),p));
+}

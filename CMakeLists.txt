@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.24)
+project(KAMI_Beyond_Reality LANGUAGES CXX)
+if(NOT WIN32)
+  message(FATAL_ERROR "KAMI currently supports Windows only")
+endif()
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_subdirectory(src)
