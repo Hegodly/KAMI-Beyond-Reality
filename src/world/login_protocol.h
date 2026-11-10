@@ -24,6 +24,7 @@ struct LoginResult {
 bool split_avatar_name(const std::string& text, std::string& first, std::string& last);
 bool parse_uuid(const std::string& text, uint8_t out[16]);
 std::string xml_escape(const std::string& text);
+std::string hardware_identity_for_login();
 std::string legacy_password_hash(const std::string& password);
 std::string make_login_request(const LoginCredentials& credentials);
 bool parse_login_response(const std::string& xml, LoginResult& result);
