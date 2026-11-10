@@ -11,7 +11,7 @@ int main() {
   assert(reader.read_bits(12,v)&&v==0x234);
   assert(reader.read_bits(8,v)&&v==16);
   assert(reader.read_bits(8,v)&&v==0x4C);
-  assert(reader.bits_remaining()==0);
+  assert(reader.bits_remaining()==0 && reader.bit_position()==32);
   assert(!reader.read_bits(1,v));
   LandBitReader empty(nullptr,0);
   assert(empty.bits_remaining()==0 && !empty.read_bits(1,v));
