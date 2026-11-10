@@ -24,6 +24,8 @@ int main() {
   assert(terrain.apply_decoded_patch(p));
   assert(terrain.received_samples()==4);
   assert(terrain.renderable_cells()==1);
+  assert(terrain.missing_cells()==8);
+  assert(std::fabs(terrain.renderable_coverage()-1.0f/9.0f)<.001f);
   assert(terrain.any_renderable_cells());
   assert(terrain.build_partial_render_mesh(mesh));
   assert(validate_mesh(mesh));
