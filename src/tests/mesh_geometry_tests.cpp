@@ -23,7 +23,7 @@ void binary(std::vector<uint8_t>& d,const std::vector<uint8_t>& bytes){
 void le16(std::vector<uint8_t>& d,uint16_t n){
   d.push_back(uint8_t(n));d.push_back(uint8_t(n>>8));
 }
-std::vector<uint8_t> fixture(bool bad_triangle=false) {
+std::vector<uint8_t> fixture(bool bad_triangle=false,bool medium_only=false) {
   std::vector<uint8_t> sub{'['};be32(sub,1);
   sub.push_back('{');be32(sub,3);
   key(sub,"Position");
@@ -45,8 +45,15 @@ std::vector<uint8_t> fixture(bool bad_triangle=false) {
   assert(compress2(compressed.data(),&bound,sub.data(),
                    static_cast<uLong>(sub.size()),Z_BEST_SPEED)==Z_OK);
   compressed.resize(bound);
-  std::vector<uint8_t> header{'{'};be32(header,1);
-  key(header,"high_lod");header.push_back('{');be32(header,2);
+  std::vector<uint8_t> header{'{'};be32(header,medium_only?2:1);
+  if(medium_only){
+    key(header,"high_lod");header.push_back('{');be32(header,2);
+    key(header,"offset");header.push_back('i');be32(header,UINT32_MAX);
+    key(header,"size");header.push_back('i');be32(header,0);
+    header.push_back('}');
+  }
+  key(header,medium_only?"medium_lod":"high_lod");
+  header.push_back('{');be32(header,2);
   key(header,"offset");header.push_back('i');be32(header,0);
   key(header,"size");header.push_back('i');be32(header,uint32_t(compressed.size()));
   header.push_back('}');header.push_back('}');
@@ -66,6 +73,15 @@ int main(){
   assert(std::fabs(v[0].x+0.5f)<.001f && std::fabs(v[0].y+0.5f)<.001f);
   assert(std::fabs(v[1].x-0.5f)<.001f && std::fabs(v[2].z-0.5f)<.001f);
   assert(v[1].u==1.f && v[2].v==1.f);
+  assert(geom.quality==MeshLodQuality::High);
+  auto sparse=fixture(false,true);
+  MeshAssetHeader sparse_header;
+  assert(parse_mesh_asset_header(sparse,sparse_header));
+  assert(!sparse_header.high.present && sparse_header.medium.present);
+  assert(!decode_mesh_high_lod(sparse,sparse_header,geom));
+  assert(decode_mesh_best_lod(sparse,sparse_header,geom));
+  assert(geom.quality==MeshLodQuality::Medium);
+  assert(geom.vertices==3 && geom.triangles==1);
   auto broken=fixture(true);
   MeshAssetHeader bad_header;
   assert(parse_mesh_asset_header(broken,bad_header));
