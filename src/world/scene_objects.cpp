@@ -320,7 +320,17 @@ bool SceneObjects::ingest(const kami::sl::Packet& packet) {
     if(it==objects_.end()) {
       if(objects_.size()>=8192)continue;
       objects_.emplace(ob.local_id,ob);
-    } else it->second=ob;
+    } else {
+      // Some simulator updates omit optional TE or shape blocks. Never
+      // replace a previously validated appearance with an empty placeholder
+      // just because an incremental packet lacks material information.
+      SceneObject updated=ob;
+      if(!updated.textures.valid && it->second.textures.valid)
+        updated.textures=it->second.textures;
+      if(!updated.shape.valid && it->second.shape.valid)
+        updated.shape=it->second.shape;
+      it->second=std::move(updated);
+    }
     ++revision_;++stats_.updated_objects;
   }
   return true;
