@@ -120,7 +120,7 @@ std::vector<uint8_t> colored_te() {
   zeros(te,16);te[0]=0x34;u8(te,0); // default asset UUID
   // Inverted SL RGBA. Face 2 is green; default is orange.
   u8(te,0);u8(te,191);u8(te,223);u8(te,0);
-  u8(te,4);u8(te,255);u8(te,0);u8(te,255);u8(te,0);
+  u8(te,4);u8(te,255);u8(te,0);u8(te,255);u8(te,127);
   u8(te,0); // end face color overrides
   for(unsigned width: {4u,4u,2u,2u,2u,1u,1u,1u}) {
     zeros(te,width);
@@ -240,6 +240,8 @@ int main() {
   assert(std::fabs(painted.vertices[0].g-64.f/255.f)<0.001f);
   assert(std::fabs(painted.vertices[12].r-0.f)<0.001f);
   assert(std::fabs(painted.vertices[12].g-1.f)<0.001f);
+  assert(std::fabs(painted.vertices[12].alpha-128.f/255.f)<0.001f);
+  assert(std::fabs(painted.vertices[0].alpha-1.f)<0.001f);
   kami::world::TextureAtlas atlas;
   kami::world::AssetId source{};
   source[0]=0x34;
