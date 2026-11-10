@@ -8,6 +8,7 @@ class Dx12 {
 public:
   void init(HWND hwnd);
   void frame();
+  void key(UINT key, bool pressed);
   ~Dx12();
 private:
   void sync();
@@ -40,5 +41,7 @@ private:
   ULONGLONG last_tick = 0;
   POINT previous_mouse{};
   bool mouse_tracking = false;
+  bool keys[256]{};
+  HWND window_handle = nullptr;
 };
 }
