@@ -548,7 +548,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         wchar_t message[600]{};
         swprintf_s(message,
           L"UDP: %llu | Terrain: %llu decoded | Land: %.1f%%\n"
-          L"Scene: %zu prims | %zu color entries | %zu unique texture IDs\n"
+          L"Scene: %zu prims | %zu real meshes | %zu colors | %zu texture IDs\n"
           L"Textures: %zu queued | %zu fetching | %zu J2K encoded | %zu RGBA decoded | %zu failed\n"
           L"Mesh assets: %zu objects | %zu queued | %zu fetching | %zu geometry decoded | %zu header only | %zu failed\n"
           L"Object packets: %llu full, %llu compressed | Invalid: %llu",
@@ -556,6 +556,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           static_cast<unsigned long long>(stats.decoded),
           live_terrain->terrain().completion_ratio()*100.0f,
           live_objects->renderable_prims(),
+          live_objects->renderable_meshes(live_mesh_assets),
           live_objects->objects_with_face_colors(),
           live_objects->unique_texture_references(),
           asset_counts.queued,asset_counts.in_flight,
