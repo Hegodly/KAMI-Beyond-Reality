@@ -233,7 +233,8 @@ void Dx12::sync() {
   if (fence->GetCompletedValue() == UINT64_MAX) throw std::runtime_error("DX12 device removed");
   if (fence->GetCompletedValue() < value) {
     ok(fence->SetEventOnCompletion(value, event_handle));
-    WaitForSingleObject(event_handle, INFINITE);
+    if (WaitForSingleObject(event_handle, INFINITE) != WAIT_OBJECT_0)
+      throw std::runtime_error("DX12 GPU fence wait failed");
   }
 }
 void Dx12::key(UINT key_code, bool pressed) {
