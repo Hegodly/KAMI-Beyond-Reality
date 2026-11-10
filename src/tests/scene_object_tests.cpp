@@ -181,6 +181,33 @@ int main() {
   assert(cycles.renderable_prims()==0);
   kami::world::TerrainMesh invalid_mesh;
   assert(!cycles.build_proxy_mesh(invalid_mesh));
+  // Compose two +135-degree rotations (total +270 degrees). The
+  // composite quaternion legitimately has negative W; replacing it
+  // with positive sqrt(1-xyz^2) would point the grandchild the wrong way.
+  kami::world::SceneObjects nested;
+  constexpr float sin_67_5=0.923879533f;
+  assert(nested.ingest(make_compressed(900,0,9,sin_67_5)));
+  assert(nested.ingest(make_compressed(901,900,9,sin_67_5)));
+  assert(nested.ingest(make_compressed(902,901)));
+  assert(nested.renderable_prims()==3);
+  kami::world::TerrainMesh nested_mesh;
+  assert(nested.build_proxy_mesh(nested_mesh));
+  assert(nested_mesh.vertices.size()==24);
+  bool oriented_grandchild=false;
+  for(size_t base=0;base<24;base+=8) {
+    float x=0,y=0,z=0;
+    for(size_t v=base;v<base+8;++v) {
+      x+=nested_mesh.vertices[v].x;
+      y+=nested_mesh.vertices[v].y;
+      z+=nested_mesh.vertices[v].z;
+    }
+    x/=8;y/=8;z/=8;
+    if(std::fabs(x+3.0355f)<0.04f &&
+       std::fabs(y-29.f)<0.04f &&
+       std::fabs(z-94.5355f)<0.04f)
+      oriented_grandchild=true;
+  }
+  assert(oriented_grandchild);
   scene.reset();
   assert(scene.total_objects()==0 && scene.revision()==0);
 }
