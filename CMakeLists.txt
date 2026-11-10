@@ -19,6 +19,18 @@ FetchContent_Declare(openjpeg
   GIT_TAG 839936aa33eb8899bbbd80fda02796bb65068951
   GIT_SHALLOW FALSE)
 FetchContent_MakeAvailable(openjpeg)
+# zlib is used only to inflate Second Life's bounded, compressed mesh LOD
+# blocks. Statically link it into the Windows executable.
+set(ZLIB_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(zlib
+  GIT_REPOSITORY https://github.com/madler/zlib.git
+  GIT_TAG v1.3.1
+  GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(zlib)
+if(NOT TARGET zlibstatic)
+  message(FATAL_ERROR "zlibstatic target missing")
+endif()
 if(NOT TARGET openjp2)
   message(FATAL_ERROR "OpenJPEG openjp2 target is unavailable")
 endif()
