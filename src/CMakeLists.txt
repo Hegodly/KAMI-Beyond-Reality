@@ -80,7 +80,7 @@ add_test(NAME bounded_jpeg2000_staging_queue COMMAND kami_texture_asset_queue_te
 # Validate opaque Second Life capability replies and URL construction offline.
 # HTTP access is only exercised at runtime with authenticated simulator caps.
 add_executable(kami_asset_capability_tests
-  tests/asset_capability_tests.cpp world/asset_caps.cpp world/texture_asset_queue.cpp)
+  tests/asset_capability_tests.cpp world/asset_caps.cpp world/texture_asset_queue.cpp world/mesh_asset_header.cpp)
 target_include_directories(kami_asset_capability_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(kami_asset_capability_tests PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(kami_asset_capability_tests PRIVATE winhttp ole32 oleaut32)

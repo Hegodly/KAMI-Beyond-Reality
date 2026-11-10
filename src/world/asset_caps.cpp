@@ -1,4 +1,5 @@
 #include "asset_caps.h"
+#include "mesh_asset_header.h"
 #include <windows.h>
 #include <winhttp.h>
 #include <msxml6.h>
@@ -88,7 +89,7 @@ bool post_or_get(const std::string& url,const wchar_t* method,
                  const std::string& body,size_t max_response,
                  std::vector<uint8_t>& response) {
   ParsedUrl parsed;
-  if(!parse_url(url,parsed)||max_response>TextureAssetQueue::max_asset_bytes)
+  if(!parse_url(url,parsed)||max_response>12u*1024u*1024u)
     return false;
   HttpHandle session(WinHttpOpen(L"KAMI Beyond Reality/0.1",
          WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,WINHTTP_NO_PROXY_NAME,
@@ -145,6 +146,12 @@ std::string texture_asset_url(const std::string& cap,const AssetId& id) {
   if(cap.find('?')!=std::string::npos)return {};
   return cap+suffix;
 }
+std::string mesh_asset_url(const std::string& cap,const AssetId& id) {
+  if(!valid_asset_uuid(id)||!valid_secure_capability_url(cap)||
+     cap.find('?')!=std::string::npos)return {};
+  const std::string suffix="/?mesh_id="+format_asset_uuid(id);
+  return cap.size()+suffix.size()<=4096?cap+suffix:std::string{};
+}
 bool parse_seed_capabilities(const std::string& xml,ViewerAssetCapabilities& result) {
   if(xml.empty()||xml.size()>65536)return false;
   std::wstring wide;
@@ -170,21 +177,35 @@ bool parse_seed_capabilities(const std::string& xml,ViewerAssetCapabilities& res
     HRESULT hr=doc->loadXML(input,&loaded);
     SysFreeString(input);
     if(FAILED(hr)||loaded!=VARIANT_TRUE)break;
-    Microsoft::WRL::ComPtr<IXMLDOMNode> node;
-    Bstr expression(L"/llsd/map/key[.='ViewerAsset']/following-sibling::*[1]");
-    if(FAILED(doc->selectSingleNode(expression,&node))||!node)break;
-    BSTR tag=nullptr;
-    if(FAILED(node->get_nodeName(&tag))||!tag)break;
-    const bool is_string=wcscmp(tag,L"string")==0;
-    SysFreeString(tag);
-    if(!is_string)break;
-    BSTR value=nullptr;
-    if(FAILED(node->get_text(&value))||!value)break;
-    std::string cap;
-    bool parsed=to_utf8(value,cap);
-    SysFreeString(value);
-    if(!parsed||!valid_secure_capability_url(cap))break;
-    result.viewer_asset=std::move(cap);
+    const auto field=[&](const wchar_t* expression,std::string& value)->bool {
+      Microsoft::WRL::ComPtr<IXMLDOMNode> node;
+      Bstr query(expression);
+      if(FAILED(doc->selectSingleNode(query,&node))||!node)return false;
+      BSTR tag=nullptr;
+      if(FAILED(node->get_nodeName(&tag))||!tag)return false;
+      const bool is_string=wcscmp(tag,L"string")==0;
+      SysFreeString(tag);
+      if(!is_string)return false;
+      BSTR encoded=nullptr;
+      if(FAILED(node->get_text(&encoded))||!encoded)return false;
+      std::string candidate;
+      const bool valid=to_utf8(encoded,candidate);
+      SysFreeString(encoded);
+      if(!valid||!valid_secure_capability_url(candidate))return false;
+      value=std::move(candidate);
+      return true;
+    };
+    ViewerAssetCapabilities parsed;
+    // Both endpoints are optional individually, but at least one must
+    // be valid. Do not let malformed mesh caps invalidate good textures.
+    field(L"/llsd/map/key[.='ViewerAsset']/following-sibling::*[1]",
+          parsed.viewer_asset);
+    if(!field(L"/llsd/map/key[.='GetMesh2']/following-sibling::*[1]",
+              parsed.get_mesh))
+      field(L"/llsd/map/key[.='GetMesh']/following-sibling::*[1]",
+            parsed.get_mesh);
+    if(parsed.viewer_asset.empty()&&parsed.get_mesh.empty())break;
+    result=std::move(parsed);
     good=true;
   }while(false);
   if(uninit)CoUninitialize();
@@ -194,10 +215,22 @@ bool request_viewer_asset_capability(const std::string& seed,
                                      ViewerAssetCapabilities& result) {
   static const std::string request=
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-    "<llsd><array><string>ViewerAsset</string></array></llsd>";
+    "<llsd><array><string>ViewerAsset</string><string>GetMesh2</string>"
+    "<string>GetMesh</string></array></llsd>";
   std::vector<uint8_t> response;
   if(!post_or_get(seed,L"POST",request,65536,response))return false;
   return parse_seed_capabilities(std::string(response.begin(),response.end()),result);
+}
+bool download_mesh_asset(const std::string& cap,const AssetId& id,
+                         std::vector<uint8_t>& output) {
+  const auto url=mesh_asset_url(cap,id);
+  if(url.empty())return false;
+  std::vector<uint8_t> bytes;
+  if(!post_or_get(url,L"GET",{},12u*1024u*1024u,bytes))return false;
+  MeshAssetHeader header;
+  if(!parse_mesh_asset_header(bytes,header))return false;
+  output=std::move(bytes);
+  return true;
 }
 bool download_encoded_texture(const std::string& cap,const AssetId& id,
                               std::vector<uint8_t>& output) {

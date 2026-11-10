@@ -16,19 +16,23 @@ int main() {
   assert(!valid_secure_capability_url("https://alice:secret@simhost-0.agni.lindenlab.com/CAPS/x"));
   assert(!valid_secure_capability_url("https://simhost-0.agni.lindenlab.com/CAPS/x#fragment"));
   assert(!valid_secure_capability_url("https://simhost-0.agni.lindenlab.com/CAPS/x\r\nHeader: bad"));
+  const std::string mesh_cap="https://mesh-0.agni.lindenlab.com/CAPS/mesh";
   const std::string xml=
     "<?xml version=\"1.0\"?><llsd><map>"
     "<key>EventQueueGet</key><string>https://simhost-0.agni.lindenlab.com/event</string>"
     "<key>ViewerAsset</key><string>"+cap+"</string>"
+    "<key>GetMesh2</key><string>"+mesh_cap+"</string>"
     "</map></llsd>";
   ViewerAssetCapabilities result;
   assert(parse_seed_capabilities(xml,result));
   assert(result.viewer_asset==cap);
+  assert(result.get_mesh==mesh_cap);
   assert(!parse_seed_capabilities("<llsd><map><key>ViewerAsset</key><string>http://bad.invalid</string></map></llsd>",result));
   assert(result.viewer_asset==cap);
   assert(!parse_seed_capabilities("<!DOCTYPE llsd [<!ENTITY ext SYSTEM 'file:///etc/passwd'>]>"
     "<llsd><map><key>ViewerAsset</key><string>&ext;</string></map></llsd>",result));
-  assert(!parse_seed_capabilities("<llsd><map><key>GetMesh</key><string>"+cap+"</string></map></llsd>",result));
+  assert(parse_seed_capabilities("<llsd><map><key>GetMesh</key><string>"+mesh_cap+"</string></map></llsd>",result));
+  assert(result.get_mesh==mesh_cap && result.viewer_asset.empty());
   assert(!parse_seed_capabilities("<llsd><map><key>ViewerAsset</key><integer>10</integer></map></llsd>",result));
   AssetId texture{};
   texture[0]=0x12;texture[1]=0x34;texture[15]=0x56;
@@ -37,4 +41,9 @@ int main() {
   assert(texture_asset_url(cap,AssetId{}).empty());
   assert(texture_asset_url(cap+"?token=secret",texture).empty());
   assert(texture_asset_url("http://example.com/x",texture).empty());
+  assert(mesh_asset_url(mesh_cap,texture)==mesh_cap+
+    "/?mesh_id=12340000-0000-0000-0000-000000000056");
+  assert(mesh_asset_url("http://example.com/CAPS/x",texture).empty());
+  assert(mesh_asset_url(mesh_cap+"?token=secret",texture).empty());
+  assert(mesh_asset_url(mesh_cap,AssetId{}).empty());
 }
