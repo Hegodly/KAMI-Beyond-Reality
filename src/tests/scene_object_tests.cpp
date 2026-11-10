@@ -16,7 +16,7 @@ void f32(std::vector<uint8_t>& b,float v){
 }
 void vec(std::vector<uint8_t>& b,float x,float y,float z){f32(b,x);f32(b,y);f32(b,z);}
 void region(std::vector<uint8_t>& b){zeros(b,10);u8(b,1);}
-kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode=9,float root_z_rotation=0) {
+kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode=9,float root_z_rotation=0,uint8_t profile=255) {
   std::vector<uint8_t> b{13};region(b);u32(b,0);
   std::vector<uint8_t> content;
   zeros(content,16);u32(content,id);u8(content,pcode);u8(content,0);
@@ -26,6 +26,16 @@ kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode
   vec(content,0,0,root_z_rotation); // SL quaternion xyz; w reconstructed
   u32(content,parent?0x20u:0);zeros(content,16);
   if(parent)u32(content,parent);
+  if(profile!=255) {
+    // Plain compressed volume with no extra params, followed by the
+    // same 23-byte Path/Profile descriptor as ObjectUpdate.
+    u8(content,0); // ExtraParams count
+    u8(content,0x10);u8(content,profile);
+    u16(content,0);u16(content,0);
+    u8(content,100);u8(content,100);
+    zeros(content,9);
+    u16(content,0);u16(content,0);u16(content,0);
+  }
   u16(b,static_cast<uint16_t>(content.size()));
   b.insert(b.end(),content.begin(),content.end());
   kami::sl::Packet p;p.payload=std::move(b);return p;
@@ -111,6 +121,17 @@ int main() {
   assert(round_mesh.vertices.size()==50); // 24-sided cylinder + cap centers
   assert(round_mesh.indices.size()==288);
   assert(primitives.ingest(make_kill(300)));
+  // Compressed format carries the same shape descriptor after the zero
+  // extra-parameter count, when no optional sound/sculpt/text fields exist.
+  assert(primitives.ingest(make_compressed(305,0,9,0,0)));
+  auto* packed_cylinder=primitives.get(305);
+  assert(packed_cylinder && packed_cylinder->shape.valid);
+  assert(packed_cylinder->shape.path_curve==0x10);
+  assert(packed_cylinder->shape.profile_curve==0);
+  kami::world::TerrainMesh packed_mesh;
+  assert(primitives.build_proxy_mesh(packed_mesh));
+  assert(packed_mesh.indices.size()==288);
+  assert(primitives.ingest(make_kill(305)));
   assert(primitives.ingest(make_full(301,0x20,0x05)));
   kami::world::TerrainMesh sphere;
   assert(primitives.build_proxy_mesh(sphere));
