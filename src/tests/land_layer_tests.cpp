@@ -72,6 +72,10 @@ int main() {
   assert(decode_land_patch_coordinates(3u|(2u<<5),16,patch_x,patch_y));
   assert(patch_x==48 && patch_y==32);
   assert(!decode_land_patch_coordinates(0,8,patch_x,patch_y));
+  std::vector<float> reconstructed;
+  assert(inverse_land_dct(coefficients,16,reconstructed));
+  assert(reconstructed.size()==256);
+  for (float h:reconstructed) assert(h==0.0f);
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
