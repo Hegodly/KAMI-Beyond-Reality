@@ -1,4 +1,4 @@
-add_executable(KAMIViewer WIN32 main.cpp dx12.cpp dx12.h world/region.h world/terrain.h world/terrain.cpp world/terrain_stream.h world/terrain_stream.cpp world/terrain_capture.h world/terrain_capture.cpp world/scene_objects.h world/scene_objects.cpp world/primitive_shapes.h world/primitive_shapes.cpp world/texture_entries.h world/texture_entries.cpp world/texture_asset_queue.h world/texture_asset_queue.cpp world/asset_caps.h world/asset_caps.cpp world/texture_atlas.h world/texture_atlas.cpp world/texture_decode_wic.h world/texture_decode_wic.cpp world/texture_decode_openjpeg.h world/texture_decode_openjpeg.cpp world/region_protocol.h world/region_protocol.cpp world/lludp.h world/lludp.cpp world/land_layer.h world/land_layer.cpp world/simulator_transport.h world/simulator_transport.cpp world/simulator_session.h world/simulator_session.cpp world/login_protocol.h world/login_protocol.cpp world/login_response.cpp world/login_password.cpp world/login_tls.cpp world/login_identity.cpp)
+add_executable(KAMIViewer WIN32 main.cpp dx12.cpp dx12.h world/region.h world/terrain.h world/terrain.cpp world/terrain_stream.h world/terrain_stream.cpp world/terrain_capture.h world/terrain_capture.cpp world/scene_objects.h world/scene_objects.cpp world/mesh_discovery.h world/mesh_discovery.cpp world/primitive_shapes.h world/primitive_shapes.cpp world/texture_entries.h world/texture_entries.cpp world/texture_asset_queue.h world/texture_asset_queue.cpp world/asset_caps.h world/asset_caps.cpp world/texture_atlas.h world/texture_atlas.cpp world/texture_decode_wic.h world/texture_decode_wic.cpp world/texture_decode_openjpeg.h world/texture_decode_openjpeg.cpp world/region_protocol.h world/region_protocol.cpp world/lludp.h world/lludp.cpp world/land_layer.h world/land_layer.cpp world/simulator_transport.h world/simulator_transport.cpp world/simulator_session.h world/simulator_session.cpp world/login_protocol.h world/login_protocol.cpp world/login_response.cpp world/login_password.cpp world/login_tls.cpp world/login_identity.cpp)
 target_compile_definitions(KAMIViewer PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(KAMIViewer PRIVATE d3d12 dxgi user32 ws2_32 comdlg32 winhttp bcrypt ole32 oleaut32 iphlpapi windowscodecs openjp2)
 target_include_directories(KAMIViewer PRIVATE
@@ -60,7 +60,7 @@ add_test(NAME dx12_camera_projection_and_shader COMMAND kami_dx12_projection_tes
 # Official ObjectUpdate, ObjectUpdateCompressed, ObjectUpdateCached and KillObject
 # binary record fixtures; these are synthetic and contain no resident data.
 add_executable(kami_scene_object_tests
-  tests/scene_object_tests.cpp world/scene_objects.cpp world/primitive_shapes.cpp world/texture_entries.cpp world/texture_asset_queue.cpp world/texture_atlas.cpp
+  tests/scene_object_tests.cpp world/scene_objects.cpp world/mesh_discovery.cpp world/primitive_shapes.cpp world/texture_entries.cpp world/texture_asset_queue.cpp world/texture_atlas.cpp
   world/terrain.cpp world/region_protocol.cpp world/land_layer.cpp world/lludp.cpp)
 target_include_directories(kami_scene_object_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME second_life_scene_object_update_packets COMMAND kami_scene_object_tests)
@@ -109,3 +109,8 @@ add_test(NAME real_openjpeg_j2k_pixel_decode COMMAND kami_openjpeg_decode_tests)
 # OpenJPEG's BSD 2-clause license accompanies the statically linked binary.
 configure_file("${openjpeg_SOURCE_DIR}/LICENSE"
                "${CMAKE_CURRENT_BINARY_DIR}/OpenJPEG-LICENSE.txt" COPYONLY)
+
+add_executable(kami_mesh_discovery_tests tests/mesh_discovery_tests.cpp
+  world/mesh_discovery.cpp world/texture_asset_queue.cpp)
+target_include_directories(kami_mesh_discovery_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME mesh_extra_params_bounded_parsing COMMAND kami_mesh_discovery_tests)
