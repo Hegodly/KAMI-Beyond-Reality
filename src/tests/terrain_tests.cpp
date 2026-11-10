@@ -31,6 +31,7 @@ int main() {
   assert(terrain.build_partial_render_mesh(mesh));
   assert(validate_mesh(mesh));
   assert(mesh.indices.size()==6);
+  assert(mesh.vertices.size()==4);
   assert(terrain.sample_height_bilinear(.5f,.5f,elevation));
   assert(std::fabs(elevation-2.5f)<.001f);
   assert(!terrain.sample_height_bilinear(-1.0f,.5f,elevation));
