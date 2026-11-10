@@ -275,7 +275,8 @@ void Dx12::frame() {
     last_title = now;
   }
   POINT mouse{};
-  if (GetAsyncKeyState(VK_RBUTTON) & 0x8000 && GetCursorPos(&mouse)) {
+  if (window_handle && GetForegroundWindow() == window_handle &&
+      (GetAsyncKeyState(VK_RBUTTON) & 0x8000) && GetCursorPos(&mouse)) {
     if (mouse_tracking) {
       yaw += static_cast<float>(mouse.x - previous_mouse.x) * 0.003f;
       pitch = std::clamp(pitch - static_cast<float>(mouse.y - previous_mouse.y) * 0.003f, -1.45f, 1.45f);
