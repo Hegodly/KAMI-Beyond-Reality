@@ -8,12 +8,14 @@
 #include <cstdint>
 #include <DirectXMath.h>
 #include <algorithm>
+#include <cstdio>
 #pragma comment(lib, "d3dcompiler.lib")
 namespace {
 void ok(HRESULT hr) { if (FAILED(hr)) throw std::runtime_error("D3D12 operation failed"); }
 }
 namespace kami {
 void Dx12::init(HWND hwnd) {
+  window_handle = hwnd;
   Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
   ok(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
   ok(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device)));
@@ -176,19 +178,30 @@ void Dx12::sync() {
     WaitForSingleObject(event_handle, INFINITE);
   }
 }
+void Dx12::key(UINT key_code, bool pressed) {
+  if (key_code < 256) keys[key_code] = pressed;
+}
 void Dx12::frame() {
   const ULONGLONG now = GetTickCount64();
   float dt = last_tick ? std::min(0.05f, static_cast<float>(now - last_tick) * 0.001f) : 0.016f;
   last_tick = now;
-  const float speed = ((GetAsyncKeyState(VK_SHIFT) & 0x8000) ? 24.0f : 10.0f) * dt;
+  const float speed = ((keys[VK_SHIFT]) ? 24.0f : 10.0f) * dt;
   const float forward_x = std::sin(yaw), forward_z = std::cos(yaw);
   const float right_x = std::cos(yaw), right_z = -std::sin(yaw);
-  if (GetAsyncKeyState('W') & 0x8000) { camera_x += forward_x * speed; camera_z += forward_z * speed; }
-  if (GetAsyncKeyState('S') & 0x8000) { camera_x -= forward_x * speed; camera_z -= forward_z * speed; }
-  if (GetAsyncKeyState('D') & 0x8000) { camera_x += right_x * speed; camera_z += right_z * speed; }
-  if (GetAsyncKeyState('A') & 0x8000) { camera_x -= right_x * speed; camera_z -= right_z * speed; }
-  if (GetAsyncKeyState('E') & 0x8000) camera_y += speed;
-  if (GetAsyncKeyState('Q') & 0x8000) camera_y -= speed;
+  if (keys['W'] || keys[VK_UP]) { camera_x += forward_x * speed; camera_z += forward_z * speed; }
+  if (keys['S'] || keys[VK_DOWN]) { camera_x -= forward_x * speed; camera_z -= forward_z * speed; }
+  if (keys['D'] || keys[VK_RIGHT]) { camera_x += right_x * speed; camera_z += right_z * speed; }
+  if (keys['A'] || keys[VK_LEFT]) { camera_x -= right_x * speed; camera_z -= right_z * speed; }
+  if (keys['E']) camera_y += speed;
+  if (keys['Q']) camera_y -= speed;
+  static ULONGLONG last_title = 0;
+  if (now - last_title > 250 && window_handle) {
+    wchar_t title[256]{};
+    swprintf_s(title, L"KAMI | WASD/Arrows move, Shift sprint, Q/E fly | Camera: %.1f, %.1f, %.1f",
+               camera_x, camera_y, camera_z);
+    SetWindowTextW(window_handle, title);
+    last_title = now;
+  }
   POINT mouse{};
   if (GetAsyncKeyState(VK_RBUTTON) & 0x8000 && GetCursorPos(&mouse)) {
     if (mouse_tracking) {
