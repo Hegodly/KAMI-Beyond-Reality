@@ -37,6 +37,12 @@ bool TextureAtlas::insert(const AssetId& id,const DecodedImage& image) {
   ++revision_;
   return true;
 }
+bool TextureAtlas::shader_slot(const AssetId& id,float& one_based_slot) const {
+  const auto it=slots_.find(id);
+  if(it==slots_.end())return false;
+  one_based_slot=static_cast<float>(it->second+1);
+  return true;
+}
 bool TextureAtlas::uv(const AssetId& id,float u,float v,
                       float& out_u,float& out_v) const {
   auto it=slots_.find(id);
