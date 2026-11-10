@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 namespace kami::world {
+struct TerrainPatch;
 struct TerrainVertex { float x, y, z, r, g, b; };
 struct TerrainMesh {
   std::vector<TerrainVertex> vertices;
@@ -22,6 +23,7 @@ public:
   void reset();
   bool has_sample(uint32_t x, uint32_t y) const;
   size_t missing_samples() const;
+  bool apply_decoded_patch(const TerrainPatch& patch);
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
