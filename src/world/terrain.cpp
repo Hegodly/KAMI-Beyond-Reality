@@ -42,6 +42,22 @@ bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
   for (auto i : source.indices) destination.indices.push_back(offset + i);
   return true;
 }
+TerrainMesh make_box_mesh(float x, float y, float z, float sx, float sy, float sz) {
+  if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) ||
+      !std::isfinite(sx) || !std::isfinite(sy) || !std::isfinite(sz) ||
+      sx <= 0 || sy <= 0 || sz <= 0) throw std::invalid_argument("Invalid box geometry");
+  const float a = sx * 0.5f, b = sy * 0.5f, c = sz * 0.5f;
+  TerrainMesh m;
+  m.vertices = {
+    {x-a,y-b,z-c,.65f,.66f,.72f}, {x+a,y-b,z-c,.65f,.66f,.72f},
+    {x-a,y+b,z-c,.65f,.66f,.72f}, {x+a,y+b,z-c,.65f,.66f,.72f},
+    {x-a,y-b,z+c,.65f,.66f,.72f}, {x+a,y-b,z+c,.65f,.66f,.72f},
+    {x-a,y+b,z+c,.65f,.66f,.72f}, {x+a,y+b,z+c,.65f,.66f,.72f}
+  };
+  m.indices = {0,2,1,1,2,3,4,5,6,5,7,6,0,4,2,4,6,2,
+               1,3,5,5,3,7,2,6,3,3,6,7,0,1,4,1,5,4};
+  return m;
+}
 TerrainMesh make_terrain_mesh(const Heightfield& h) {
   if (!h.valid() || !std::isfinite(h.spacing) || h.spacing <= 0.0f)
     throw std::invalid_argument("Invalid heightfield");
