@@ -71,6 +71,29 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   value=next;
   return true;
 }
+bool decode_land_coefficients(LandBitReader& reader,unsigned patch_size,unsigned word_bits,std::vector<int32_t>& coefficients) {
+  if ((patch_size!=16 && patch_size!=32) || word_bits<2 || word_bits>17) return false;
+  const size_t count=size_t(patch_size)*patch_size;
+  std::vector<int32_t> decoded(count,0);
+  for (size_t i=0;i<count;) {
+    uint32_t present=0;
+    if (!reader.read_bits(1,present)) return false;
+    if (!present) {
+      uint32_t run=0;
+      if (!reader.read_bits(1,run)) return false;
+      if (!run) { ++i; continue; }
+      uint32_t length=0;
+      if (!reader.read_bits(5,length) || !length || length>count-i) return false;
+      i+=length;
+      continue;
+    }
+    uint32_t sign=0,magnitude=0;
+    if (!reader.read_bits(1,sign) || !reader.read_bits(word_bits,magnitude)) return false;
+    decoded[i++]=sign ? -static_cast<int32_t>(magnitude) : static_cast<int32_t>(magnitude);
+  }
+  coefficients=std::move(decoded);
+  return true;
+}
 bool read_land_patch_end(LandBitReader& reader,bool& end) {
   uint32_t marker=0;
   if (!reader.read_bits(8,marker)) return false;
