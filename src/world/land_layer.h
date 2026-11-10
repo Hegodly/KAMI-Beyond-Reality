@@ -21,4 +21,11 @@ struct LandGroupHeader {
   uint8_t layer_type = 0;
 };
 bool read_land_group_header(LandBitReader& reader, LandGroupHeader& header);
+struct LandPatchHeader {
+  uint8_t quant_wbits = 0;
+  float dc_offset = 0;
+  uint16_t range = 0;
+  uint16_t patch_id = 0;
+};
+bool read_land_patch_header(LandBitReader& reader, LandPatchHeader& header);
 }
