@@ -201,6 +201,22 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
       }
+      if (login_future.valid() &&
+          login_future.wait_for(std::chrono::milliseconds(0))==std::future_status::ready) {
+        auto outcome=login_future.get();
+        if (!outcome.authenticated) {
+          SetWindowTextW(status_text,L"Login denied or extra verification required.");
+        } else {
+          connected_session=std::make_unique<kami::sl::SimulatorSession>();
+          if (!connected_session->connect(outcome.session)) {
+            connected_session.reset();
+            SetWindowTextW(status_text,L"Login accepted; simulator circuit connection failed.");
+          } else {
+            live_terrain=std::make_unique<kami::world::TerrainStream>(256,256);
+            SetWindowTextW(status_text,L"Authenticated. Waiting for simulator terrain packets...");
+          }
+        }
+      }
       if (IsIconic(window)) { WaitMessage(); continue; }
       renderer.frame();
     }
