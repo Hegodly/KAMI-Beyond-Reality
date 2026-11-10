@@ -91,11 +91,8 @@ bool TerrainAssembler::patch_received(uint32_t x,uint32_t y,uint32_t width,uint3
 }
 bool TerrainAssembler::apply_patch_if_new(const TerrainPatch& patch) {
   if (!validate_patch(patch, heights_)) return false;
-  bool all_received = true;
-  for (uint32_t y=patch.y;y<patch.y+patch.height;++y)
-    for (uint32_t x=patch.x;x<patch.x+patch.width;++x)
-      if (!has_sample(x,y)) all_received = false;
-  return all_received ? true : apply_decoded_patch(patch);
+  return patch_received(patch.x,patch.y,patch.width,patch.height) ?
+    true : apply_decoded_patch(patch);
 }
 bool TerrainAssembler::apply_decoded_patch(const TerrainPatch& patch) {
   if (!validate_patch(patch, heights_)) return false;
