@@ -131,7 +131,19 @@ bool parse_compressed(const std::vector<uint8_t>& data,size_t offset,
       c.u32(special)&&c.skip(16);
     if (known && (special&0x80u)) known=c.skip(12);
     if (known && (special&0x20u)) known=c.u32(ob.parent_id);
-    // Unknown optional trailing fields are not interpreted as geometry.
+    // Following the fixed fields, a conventional compressed volume contains
+    // an ExtraParams count, then its 23-byte Path/Profile descriptor.
+    // Handle the common zero-extra-parameters case only. Do not guess byte
+    // offsets across optional sounds, sculpt params, particles or text.
+    // Those objects deliberately keep shape.valid=false until fully parsed.
+    if(known && c.pos<end && (special&~0x20u)==0) {
+      const size_t begin=c.pos;
+      uint8_t extras=0;
+      if(c.u8(extras) && extras==0 && end-c.pos>=23) {
+        PrimitiveShape shape;
+        if(read_shape(c,shape)) ob.shape=shape;
+      } else c.pos=begin;
+    }
     if(known && c.pos<=end && plausible(ob) && normalize_rotation(ob))
       objects.push_back(ob);
     else ++skipped;
