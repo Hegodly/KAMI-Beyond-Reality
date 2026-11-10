@@ -92,6 +92,8 @@ bool tint_primitive_proxy(const SceneObject& ob,TerrainMesh& mesh,const TextureA
         auto v=mesh.vertices[index];
         v.r=r;v.g=g;v.b=b;
         v.alpha=float(rgba[3])/255.f;
+    v.fullbright=(ob.textures.faces[0].bump_fullbright&0x20u)?1.f:0.f;
+        v.fullbright=(ob.textures.faces[face].bump_fullbright&0x20u)?1.f:0.f;
         if(atlas) {
           // Cube face pairs are stored in fixed order: +/-Z, +/-X, +/-Y.
           // The face-local coordinates are normalized before atlas mapping.
