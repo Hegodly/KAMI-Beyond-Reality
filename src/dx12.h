@@ -13,6 +13,7 @@ public:
   // Uploads a decoded world mesh to the existing DX12 draw path.
   // Call from the render thread, after init().
   bool set_world_mesh(const world::TerrainMesh& mesh);
+  bool set_region_terrain(const world::TerrainAssembler& terrain);
   ~Dx12();
 private:
   void sync();
