@@ -2,6 +2,7 @@
 #include "world/terrain_capture.h"
 #include "world/terrain_stream.h"
 #include "world/scene_objects.h"
+#include "world/asset_caps.h"
 #include "world/login_protocol.h"
 #include "world/simulator_session.h"
 #include <future>
@@ -27,6 +28,23 @@ std::unique_ptr<kami::world::TerrainStream> live_terrain;
 std::unique_ptr<kami::world::SceneObjects> live_objects;
 kami::world::TextureAssetQueue live_texture_assets;
 uint64_t last_texture_catalog_revision=0;
+struct CapabilityReply {
+  uint64_t generation=0;
+  kami::world::ViewerAssetCapabilities cap;
+  bool success=false;
+};
+struct TextureDownload {
+  uint64_t generation=0;
+  kami::world::AssetId id{};
+  std::vector<uint8_t> bytes;
+  bool success=false;
+};
+std::future<CapabilityReply> cap_future;
+std::future<TextureDownload> texture_future;
+std::string pending_seed_cap;
+std::string live_viewerasset_cap;
+uint64_t world_generation=0;
+ULONGLONG last_texture_request_ms=0;
 kami::world::TerrainOnlyCapture live_land_capture;
 uint64_t live_uploaded_revision = 0;
 uint64_t live_uploaded_object_revision = 0;
@@ -79,6 +97,10 @@ void start_login() {
     std::fill(credentials.password.begin(),credentials.password.end(),'\0');
     return;
   }
+  ++world_generation;
+  pending_seed_cap.clear();
+  live_viewerasset_cap.clear();
+  last_texture_request_ms=0;
   if (connected_session) connected_session->disconnect();
   connected_session.reset();
   live_terrain.reset();
@@ -284,6 +306,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             live_objects=std::make_unique<kami::world::SceneObjects>();
             live_texture_assets.clear();
             last_texture_catalog_revision=0;
+            pending_seed_cap=std::move(outcome.seed_capability);
+            live_viewerasset_cap.clear();
             live_land_capture.clear();
             live_uploaded_object_revision=0;
             live_last_object_request_ms=0;
@@ -293,6 +317,48 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             SetWindowTextW(status_text,L"Authenticated. Waiting for simulator terrain packets...");
           }
         }
+      }
+      // Capability discovery and JPEG2000 downloads run outside the frame
+      // loop. Generation tags prevent stale responses from an old login from
+      // reaching a new region or account. Opaque capability URLs are never
+      // displayed or written to logs.
+      if(cap_future.valid() &&
+         cap_future.wait_for(std::chrono::milliseconds(0))==std::future_status::ready) {
+        try {
+          auto reply=cap_future.get();
+          if(reply.generation==world_generation && reply.success &&
+             connected_session && live_objects)
+            live_viewerasset_cap=std::move(reply.cap.viewer_asset);
+        } catch(const std::exception&) {
+          // Keep terrain and proxy rendering available if CAPS fail.
+        }
+      }
+      if(texture_future.valid() &&
+         texture_future.wait_for(std::chrono::milliseconds(0))==std::future_status::ready) {
+        try {
+          auto response=texture_future.get();
+          if(response.generation==world_generation && connected_session) {
+            if(response.success)
+              live_texture_assets.finish(response.id,response.bytes);
+            else
+              live_texture_assets.fail(response.id,true);
+          }
+        } catch(const std::exception&) {
+          // A failed background request must not interrupt DX12.
+        }
+      }
+      if(connected_session && live_objects && !pending_seed_cap.empty() &&
+         !cap_future.valid()) {
+        auto seed=std::move(pending_seed_cap);
+        pending_seed_cap.clear();
+        const uint64_t current=world_generation;
+        cap_future=std::async(std::launch::async,
+          [seed=std::move(seed),current]() mutable {
+            CapabilityReply reply;
+            reply.generation=current;
+            reply.success=kami::world::request_viewer_asset_capability(seed,reply.cap);
+            return reply;
+          });
       }
       if (connected_session && live_terrain && live_objects) {
         connected_session->tick();
@@ -306,6 +372,27 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         if (live_objects->revision()!=last_texture_catalog_revision) {
           live_texture_assets.reconcile(live_objects->referenced_texture_ids());
           last_texture_catalog_revision=live_objects->revision();
+        }
+        // Start at most one HTTP fetch per frame and per 350 ms.
+        // The raw bytes remain in a bounded encoded cache; they are NOT
+        // decoded to textures or submitted to the DX12 material pipeline.
+        if(!live_viewerasset_cap.empty() && !texture_future.valid() &&
+           time-last_texture_request_ms>=350) {
+          auto next=live_texture_assets.take_pending(1);
+          if(!next.empty()) {
+            const auto id=next.front();
+            const auto cap=live_viewerasset_cap;
+            const uint64_t current=world_generation;
+            texture_future=std::async(std::launch::async,
+              [current,id,cap]() {
+                TextureDownload result;
+                result.generation=current;result.id=id;
+                result.success=kami::world::download_encoded_texture(
+                  cap,id,result.bytes);
+                return result;
+              });
+            last_texture_request_ms=time;
+          }
         }
         // Cache probes require explicit full-object requests. Send bounded
         // batches, leaving the rest queued instead of flooding the simulator.
@@ -333,7 +420,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         swprintf_s(message,
           L"UDP: %llu | Terrain: %llu decoded | Land: %.1f%%\n"
           L"Scene: %zu prims | %zu color entries | %zu unique texture IDs\n"
-          L"Texture staging: %zu queued (not fetched) | %zu encoded | %zu failed\n"
+          L"Texture staging: %zu queued | %zu fetching | %zu encoded J2K | %zu failed\n"
           L"Object packets: %llu full, %llu compressed | Invalid: %llu",
           static_cast<unsigned long long>(stats.packets),
           static_cast<unsigned long long>(stats.decoded),
@@ -341,10 +428,14 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           live_objects->renderable_prims(),
           live_objects->objects_with_face_colors(),
           live_objects->unique_texture_references(),
-          asset_counts.queued,asset_counts.encoded_ready,asset_counts.failed,
+          asset_counts.queued,asset_counts.in_flight,
+          asset_counts.encoded_ready,asset_counts.failed,
           static_cast<unsigned long long>(objects.full_packets),
           static_cast<unsigned long long>(objects.compressed_packets),
           static_cast<unsigned long long>(objects.invalid_packets));
+        renderer.set_texture_stage_stats(asset_counts.encoded_ready,
+                                         asset_counts.queued,
+                                         asset_counts.in_flight);
         SetWindowTextW(status_text,message);
         live_last_status_ms=GetTickCount64();
       }

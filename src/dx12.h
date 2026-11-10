@@ -20,6 +20,11 @@ public:
   bool set_region_scene(const world::TerrainAssembler& terrain,
                         const world::SceneObjects* objects);
   bool showing_recorded_terrain() const { return recorded_terrain; }
+  void set_texture_stage_stats(size_t staged,size_t queued,size_t fetching) {
+    staged_encoded_textures=staged;
+    waiting_texture_assets=queued;
+    fetching_texture_assets=fetching;
+  }
   // Clear the demonstration index count until authenticated terrain arrives.
   void prepare_live_region() {
     recorded_terrain = false; live_scene = true; index_count = 0;
@@ -75,5 +80,8 @@ private:
   float terrain_max_step = 0.0f;
   float terrain_max_patch_seam = 0.0f;
   size_t scene_proxy_roots = 0;
+  size_t staged_encoded_textures = 0;
+  size_t waiting_texture_assets = 0;
+  size_t fetching_texture_assets = 0;
 };
 }
