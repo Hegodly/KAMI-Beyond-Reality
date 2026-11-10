@@ -3,6 +3,7 @@
 #include "world/terrain_stream.h"
 #include "world/scene_objects.h"
 #include "world/asset_caps.h"
+#include "world/mesh_asset_queue.h"
 #include "world/texture_decode_wic.h"
 #include "world/texture_decode_openjpeg.h"
 #include "world/login_protocol.h"
@@ -29,6 +30,8 @@ std::unique_ptr<kami::sl::SimulatorSession> connected_session;
 std::unique_ptr<kami::world::TerrainStream> live_terrain;
 std::unique_ptr<kami::world::SceneObjects> live_objects;
 kami::world::TextureAssetQueue live_texture_assets;
+kami::world::MeshAssetQueue live_mesh_assets;
+uint64_t last_mesh_catalog_revision=0;
 kami::world::TextureAtlas live_atlas;
 uint64_t uploaded_atlas_revision=0;
 uint64_t failed_atlas_revision=0;
@@ -37,6 +40,12 @@ uint64_t last_texture_catalog_revision=0;
 struct CapabilityReply {
   uint64_t generation=0;
   kami::world::ViewerAssetCapabilities cap;
+  bool success=false;
+};
+struct MeshDownload {
+  uint64_t generation=0;
+  kami::world::AssetId id{};
+  std::vector<uint8_t> bytes;
   bool success=false;
 };
 struct TextureDownload {
@@ -49,11 +58,14 @@ struct TextureDownload {
 };
 std::future<CapabilityReply> cap_future;
 std::future<TextureDownload> texture_future;
+std::future<MeshDownload> mesh_future;
 std::string pending_seed_cap;
 std::string live_viewerasset_cap;
+std::string live_mesh_cap;
 bool caps_discovery_failed=false;
 uint64_t world_generation=0;
 ULONGLONG last_texture_request_ms=0;
+ULONGLONG last_mesh_request_ms=0;
 kami::world::TerrainOnlyCapture live_land_capture;
 uint64_t live_uploaded_revision = 0;
 uint64_t live_uploaded_object_revision = 0;
@@ -109,13 +121,17 @@ void start_login() {
   ++world_generation;
   pending_seed_cap.clear();
   live_viewerasset_cap.clear();
+  live_mesh_cap.clear();
   caps_discovery_failed=false;
   last_texture_request_ms=0;
+  last_mesh_request_ms=0;
   if (connected_session) connected_session->disconnect();
   connected_session.reset();
   live_terrain.reset();
   live_objects.reset();
   live_texture_assets.clear();
+  live_mesh_assets.clear();
+  last_mesh_catalog_revision=0;
   live_atlas.clear();
   uploaded_atlas_revision=0;
   failed_atlas_revision=0;
@@ -319,6 +335,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             live_terrain=std::make_unique<kami::world::TerrainStream>(256,256);
             live_objects=std::make_unique<kami::world::SceneObjects>();
             live_texture_assets.clear();
+            live_mesh_assets.clear();
+            last_mesh_catalog_revision=0;
             live_atlas.clear();
             uploaded_atlas_revision=0;
             failed_atlas_revision=0;
@@ -326,6 +344,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
             last_texture_catalog_revision=0;
             pending_seed_cap=std::move(outcome.seed_capability);
             live_viewerasset_cap.clear();
+            live_mesh_cap.clear();
             caps_discovery_failed=false;
             live_land_capture.clear();
             live_uploaded_object_revision=0;
@@ -348,6 +367,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           if(reply.generation==world_generation && connected_session && live_objects) {
             if(reply.success) {
               live_viewerasset_cap=std::move(reply.cap.viewer_asset);
+              live_mesh_cap=std::move(reply.cap.get_mesh);
               caps_discovery_failed=false;
             } else {
               caps_discovery_failed=true;
@@ -356,6 +376,20 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         } catch(const std::exception&) {
           // Keep terrain and proxy rendering available if CAPS fail.
           caps_discovery_failed=true;
+        }
+      }
+      if(mesh_future.valid() &&
+         mesh_future.wait_for(std::chrono::milliseconds(0))==std::future_status::ready) {
+        try {
+          auto reply=mesh_future.get();
+          if(reply.generation==world_generation && connected_session) {
+            if(reply.success)
+              live_mesh_assets.finish(reply.id,std::move(reply.bytes));
+            else
+              live_mesh_assets.fail(reply.id,true);
+          }
+        } catch(const std::exception&) {
+          // Never make a failed mesh asset download take down terrain.
         }
       }
       if(texture_future.valid() &&
@@ -400,6 +434,34 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         if (live_objects->revision()!=last_texture_catalog_revision) {
           live_texture_assets.reconcile(live_objects->referenced_texture_ids());
           last_texture_catalog_revision=live_objects->revision();
+        }
+        if (live_objects->revision()!=last_mesh_catalog_revision) {
+          live_mesh_assets.reconcile(live_objects->referenced_mesh_ids());
+          last_mesh_catalog_revision=live_objects->revision();
+        }
+        // Each mesh download is limited to 12 MiB and checked against the
+        // asset header before staging. Never block DX12 on this request.
+        if(!live_mesh_cap.empty()&&!mesh_future.valid()&&
+           time-last_mesh_request_ms>=500) {
+          const auto pending=live_mesh_assets.take_pending(1);
+          if(!pending.empty()) {
+            const auto id=pending.front();
+            const auto cap=live_mesh_cap;
+            const auto generation=world_generation;
+            mesh_future=std::async(std::launch::async,
+              [id,cap,generation]() {
+                MeshDownload result;
+                result.generation=generation;result.id=id;
+                try {
+                  result.success=kami::world::download_mesh_asset(
+                    cap,id,result.bytes);
+                } catch(const std::exception&) {
+                  result.success=false;
+                }
+                return result;
+              });
+            last_mesh_request_ms=time;
+          }
         }
         // Start at most one HTTP fetch per frame and per 350 ms.
         // The raw bytes remain in a bounded encoded cache; they are NOT
@@ -473,11 +535,13 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
         const auto& stats=live_terrain->stats();
         const auto& objects=live_objects->stats();
         const auto asset_counts=live_texture_assets.stats();
-        wchar_t message[480]{};
+        const auto mesh_counts=live_mesh_assets.stats();
+        wchar_t message[600]{};
         swprintf_s(message,
           L"UDP: %llu | Terrain: %llu decoded | Land: %.1f%%\n"
           L"Scene: %zu prims | %zu color entries | %zu unique texture IDs\n"
           L"Textures: %zu queued | %zu fetching | %zu J2K encoded | %zu RGBA decoded | %zu failed\n"
+          L"Mesh assets: %zu objects | %zu queued | %zu fetching | %zu headers validated | %zu failed\n"
           L"Object packets: %llu full, %llu compressed | Invalid: %llu",
           static_cast<unsigned long long>(stats.packets),
           static_cast<unsigned long long>(stats.decoded),
@@ -487,6 +551,8 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           live_objects->unique_texture_references(),
           asset_counts.queued,asset_counts.in_flight,
           asset_counts.encoded_ready,live_atlas.size(),asset_counts.failed,
+          live_objects->objects_with_mesh_asset(),
+          mesh_counts.queued,mesh_counts.in_flight,mesh_counts.header_ready,mesh_counts.failed,
           static_cast<unsigned long long>(objects.full_packets),
           static_cast<unsigned long long>(objects.compressed_packets),
           static_cast<unsigned long long>(objects.invalid_packets));
