@@ -41,7 +41,7 @@ bool TerrainAssembler::build_partial_render_mesh(TerrainMesh& output) const {
   TerrainMesh candidate;
   const auto& h = heights_;
   const auto cells = renderable_cells();
-  if (cells > UINT32_MAX / 6) return false;
+  if (!cells || cells > UINT32_MAX / 6) return false;
   candidate.vertices.reserve(cells * 4);
   candidate.indices.reserve(cells * 6);
   for (uint32_t y = 0; y + 1 < h.height; ++y)
