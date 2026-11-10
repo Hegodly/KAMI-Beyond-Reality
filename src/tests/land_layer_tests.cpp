@@ -17,6 +17,9 @@ int main() {
   LandBitReader empty(nullptr,0);
   assert(empty.bits_remaining()==0 && !empty.read_bits(1,v));
   assert(empty.read_bits(0,v) && v==0);
+  LandBitReader aligner(bytes,sizeof(bytes));
+  assert(aligner.skip_bits(3) && aligner.align_to_byte());
+  assert(aligner.bit_position()==8 && aligner.align_to_byte());
   LandBitReader skipper(bytes,sizeof(bytes));
   assert(skipper.skip_bits(16) && skipper.bit_position()==16);
   assert(!skipper.skip_bits(17) && skipper.bit_position()==16);
