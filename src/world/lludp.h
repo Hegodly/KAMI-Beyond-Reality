@@ -16,4 +16,5 @@ bool parse_packet(const uint8_t* data, size_t size, Packet& output);
 bool decode_message_id(const Packet& packet, uint32_t& id, size_t& body_offset);
 bool is_message(const Packet& packet, uint32_t id);
 bool extract_message_body(const Packet& packet, std::vector<uint8_t>& body);
+constexpr uint32_t land_layer_message_id = 0x10000u + 11u;
 }
