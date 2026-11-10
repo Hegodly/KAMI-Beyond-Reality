@@ -1,3 +1,7 @@
-add_executable(KAMIViewer WIN32 main.cpp dx12.cpp dx12.h world/region.h world/terrain.h world/terrain.cpp world/region_protocol.h world/region_protocol.cpp)
+add_executable(KAMIViewer WIN32 main.cpp dx12.cpp dx12.h world/region.h world/terrain.h world/terrain.cpp world/region_protocol.h world/region_protocol.cpp world/lludp.h world/lludp.cpp)
 target_compile_definitions(KAMIViewer PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(KAMIViewer PRIVATE d3d12 dxgi user32)
+enable_testing()
+add_executable(kami_lludp_tests tests/lludp_tests.cpp world/lludp.cpp)
+target_include_directories(kami_lludp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+add_test(NAME lludp_packet_parsing COMMAND kami_lludp_tests)
