@@ -15,9 +15,11 @@ std::vector<uint8_t> flat_patch_packet() {
       ++offset;
     }
   };
-  put(0,16); put(16,8); put(76,8);
-  put(0,8); put(0x3f800000u,32); put(16,16); put(0,10);
-  for (unsigned i=0;i<256;++i) { put(0,1);put(0,1); }
+  put(0,8);put(0,8);put(16,8);put(76,8);
+  put(0,8);
+  put(0,8);put(0,8);put(0xe0,8);put(0xc0,8);
+  put(16,8);put(0,8);put(0,8);put(0,2);
+  put(1,1);put(0,1);
   put(97,8);
   std::vector<uint8_t> packet{0,0,0,0,1,0,11,76,
     static_cast<uint8_t>(group.size()),static_cast<uint8_t>(group.size()>>8)};
