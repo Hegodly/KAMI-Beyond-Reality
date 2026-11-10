@@ -72,6 +72,11 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   value=next;
   return true;
 }
+bool reconstruct_land_patch(const std::vector<int32_t>& coefficients,const LandPatchHeader& header,unsigned patch_size,std::vector<float>& heights) {
+  std::vector<float> transformed;
+  return inverse_land_dct(coefficients,patch_size,transformed) &&
+         scale_land_heights(transformed,header,patch_size,heights);
+}
 bool scale_land_heights(const std::vector<float>& frequency_heights,const LandPatchHeader& header,unsigned patch_size,std::vector<float>& heights) {
   if ((patch_size!=16 && patch_size!=32) ||
       frequency_heights.size()!=size_t(patch_size)*patch_size ||
