@@ -86,6 +86,11 @@ int main() {
   assert(decoded_group.empty());
   const uint8_t missing_terminator[]={0,0,16,0x4c};
   assert(!decode_land_group(missing_terminator,sizeof(missing_terminator),decoded_group));
+  DecodedLandPatch bounded;
+  bounded.x=240;bounded.y=240;bounded.size=16;bounded.heights.resize(256);
+  assert(land_patch_within_region(bounded,256,256));
+  bounded.x=241;
+  assert(!land_patch_within_region(bounded,256,256));
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
