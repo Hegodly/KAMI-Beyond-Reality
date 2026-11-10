@@ -28,6 +28,10 @@ int main() {
   assert(!kami::sl::extract_land_layer_data(p,compressed));
   p.payload = {0xFF,0xFF,0,11,1,0,0xAA,0xBB};
   assert(!kami::sl::extract_land_layer_data(p,compressed));
+  p.payload = {0xFF};
+  uint32_t message_id = 0;
+  size_t body_offset = 0;
+  assert(!kami::sl::decode_message_id(p,message_id,body_offset));
   const uint8_t short_packet[] = {0,0,0};
   assert(!parse_packet(short_packet,sizeof(short_packet),p));
 }
