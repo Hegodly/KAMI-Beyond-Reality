@@ -16,14 +16,14 @@ void f32(std::vector<uint8_t>& b,float v){
 }
 void vec(std::vector<uint8_t>& b,float x,float y,float z){f32(b,x);f32(b,y);f32(b,z);}
 void region(std::vector<uint8_t>& b){zeros(b,10);u8(b,1);}
-kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode=9) {
+kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode=9,float root_z_rotation=0) {
   std::vector<uint8_t> b{13};region(b);u32(b,0);
   std::vector<uint8_t> content;
   zeros(content,16);u32(content,id);u8(content,pcode);u8(content,0);
   u32(content,0);u8(content,0);u8(content,0);
   vec(content,2,4,6); // scale (SL X,Y,Z)
-  vec(content,128,128,25); // region position
-  vec(content,0,0,0); // quaternion xyz; w reconstructed
+  vec(content,parent?5.f:128.f,parent?0.f:128.f,parent?2.f:25.f);
+  vec(content,0,0,root_z_rotation); // SL quaternion xyz; w reconstructed
   u32(content,parent?0x20u:0);zeros(content,16);
   if(parent)u32(content,parent);
   u16(b,static_cast<uint16_t>(content.size()));
@@ -129,6 +129,37 @@ int main() {
   assert(primitives.build_proxy_mesh(fallback));
   assert(fallback.vertices.size()==8);
   assert(fallback.indices.size()==36);
+  // Parent rotation must rotate a child's local offset before moving
+  // it into region space; orphaned or cyclic links must not be drawn.
+  kami::world::SceneObjects links;
+  assert(links.ingest(make_compressed(501,500)));
+  assert(links.renderable_prims()==0);
+  assert(links.ingest(make_compressed(500,0,9,0.70710678f)));
+  assert(links.renderable_prims()==2);
+  kami::world::TerrainMesh pair;
+  assert(links.build_proxy_mesh(pair));
+  assert(pair.vertices.size()==16 && pair.indices.size()==72);
+  bool found_root=false,found_child=false;
+  for(size_t base=0;base<16;base+=8) {
+    float ax=0,ay=0,az=0;
+    for(size_t v=base;v<base+8;++v) {
+      ax+=pair.vertices[v].x;ay+=pair.vertices[v].y;az+=pair.vertices[v].z;
+    }
+    ax/=8;ay/=8;az/=8;
+    if(std::fabs(ax-.5f)<.02f && std::fabs(ay-25)<.02f &&
+       std::fabs(az-96)<.02f)found_root=true;
+    if(std::fabs(ax-.5f)<.02f && std::fabs(ay-27)<.02f &&
+       std::fabs(az-101)<.02f)found_child=true;
+  }
+  assert(found_root && found_child);
+  assert(links.ingest(make_kill(500)));
+  assert(links.renderable_prims()==0); // orphan is safely hidden
+  kami::world::SceneObjects cycles;
+  assert(cycles.ingest(make_compressed(700,701)));
+  assert(cycles.ingest(make_compressed(701,700)));
+  assert(cycles.renderable_prims()==0);
+  kami::world::TerrainMesh invalid_mesh;
+  assert(!cycles.build_proxy_mesh(invalid_mesh));
   scene.reset();
   assert(scene.total_objects()==0 && scene.revision()==0);
 }
