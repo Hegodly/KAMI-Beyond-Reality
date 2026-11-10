@@ -63,6 +63,9 @@ int main() {
   const uint8_t malformed_run[]={0x40};
   LandBitReader malformed(malformed_run,sizeof(malformed_run));
   assert(!decode_land_coefficients(malformed,16,4,coefficients));
+  LandBitReader invalid_size(all_zero_coefficients,sizeof(all_zero_coefficients));
+  assert(!decode_land_coefficients(invalid_size,8,4,coefficients));
+  assert(!decode_land_coefficients(invalid_size,16,0,coefficients));
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
