@@ -13,6 +13,7 @@ inline constexpr const char* terrain_dx12_shader = R"(
       float2 uv : TEXCOORD0;
       float texture_mix : TEXCOORD1;
       float alpha : TEXCOORD2;
+      float fullbright : TEXCOORD3;
     };
     struct VSOutput {
       float4 position : SV_POSITION;
@@ -21,6 +22,7 @@ inline constexpr const char* terrain_dx12_shader = R"(
       float2 uv : TEXCOORD1;
       float texture_mix : TEXCOORD2;
       float alpha : TEXCOORD3;
+      float fullbright : TEXCOORD4;
     };
     VSOutput VSMain(VSInput input) {
       VSOutput output;
@@ -32,6 +34,7 @@ inline constexpr const char* terrain_dx12_shader = R"(
       output.uv = input.uv;
       output.texture_mix = input.texture_mix;
       output.alpha = input.alpha;
+      output.fullbright = input.fullbright;
       return output;
     }
     float4 PSMain(VSOutput input) : SV_TARGET {
@@ -42,6 +45,7 @@ inline constexpr const char* terrain_dx12_shader = R"(
       float3 sun_direction = normalize(float3(0.35, 0.8, -0.4));
       float diffuse = saturate(abs(dot(normal, sun_direction)));
       float lighting = 0.30 + 0.70 * diffuse;
+      lighting = lerp(lighting,1.0,saturate(input.fullbright));
       float distance_fog = saturate((length(input.world_position.xz) - 120.0) / 260.0);
       float3 sky = float3(0.07, 0.12, 0.20);
       // A zero slot represents untextured geometry. Slots 1..64 select
