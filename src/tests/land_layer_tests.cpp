@@ -20,6 +20,9 @@ int main() {
   LandBitReader aligner(bytes,sizeof(bytes));
   assert(aligner.skip_bits(3) && aligner.align_to_byte());
   assert(aligner.bit_position()==8 && aligner.align_to_byte());
+  LandBitReader byte_reader(bytes,sizeof(bytes));
+  uint8_t byte=0;
+  assert(byte_reader.read_u8(byte) && byte==0x12);
   LandBitReader skipper(bytes,sizeof(bytes));
   assert(skipper.skip_bits(16) && skipper.bit_position()==16);
   assert(!skipper.skip_bits(17) && skipper.bit_position()==16);
