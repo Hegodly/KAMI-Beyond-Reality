@@ -42,6 +42,14 @@ bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
   for (auto i : source.indices) destination.indices.push_back(offset + i);
   return true;
 }
+bool translate_mesh(TerrainMesh& mesh, float dx, float dy, float dz) {
+  if (!std::isfinite(dx) || !std::isfinite(dy) || !std::isfinite(dz)) return false;
+  for (const auto& v : mesh.vertices)
+    if (!std::isfinite(v.x + dx) || !std::isfinite(v.y + dy) ||
+        !std::isfinite(v.z + dz)) return false;
+  for (auto& v : mesh.vertices) { v.x += dx; v.y += dy; v.z += dz; }
+  return true;
+}
 TerrainMesh make_ground_plane(float size, float elevation) {
   if (!std::isfinite(size) || !std::isfinite(elevation) || size <= 0.0f)
     throw std::invalid_argument("Invalid ground plane");
