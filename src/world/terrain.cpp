@@ -27,6 +27,22 @@ bool TerrainAssembler::apply_patch(uint32_t x, uint32_t y, uint32_t width,
     }
   return true;
 }
+bool mesh_bounds(const TerrainMesh& mesh, float min_xyz[3], float max_xyz[3]) {
+  if (!min_xyz || !max_xyz || mesh.vertices.empty()) return false;
+  for (const auto& v : mesh.vertices)
+    if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z)) return false;
+  min_xyz[0] = max_xyz[0] = mesh.vertices[0].x;
+  min_xyz[1] = max_xyz[1] = mesh.vertices[0].y;
+  min_xyz[2] = max_xyz[2] = mesh.vertices[0].z;
+  for (const auto& v : mesh.vertices) {
+    const float p[3] = {v.x,v.y,v.z};
+    for (int i = 0; i < 3; ++i) {
+      if (p[i] < min_xyz[i]) min_xyz[i] = p[i];
+      if (p[i] > max_xyz[i]) max_xyz[i] = p[i];
+    }
+  }
+  return true;
+}
 bool offset_mesh_indices(TerrainMesh& mesh, uint32_t offset) {
   for (auto i : mesh.indices) if (i > UINT32_MAX - offset) return false;
   for (auto& i : mesh.indices) i += offset;
