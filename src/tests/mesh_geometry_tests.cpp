@@ -2,6 +2,7 @@
 #include "world/mesh_geometry.h"
 #include <zlib.h>
 #include <cassert>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -31,7 +32,7 @@ std::vector<uint8_t> fixture(bool bad_triangle=false) {
   binary(sub,positions);
   key(sub,"TriangleList");
   std::vector<uint8_t> tris;
-  for(const uint16_t n:{0,1,static_cast<uint16_t>(bad_triangle?4:2)})
+  for(const uint16_t n:std::array<uint16_t,3>{0,1,static_cast<uint16_t>(bad_triangle?4:2)})
     le16(tris,n);
   binary(sub,tris);
   key(sub,"TexCoord0");
