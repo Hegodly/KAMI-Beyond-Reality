@@ -43,6 +43,11 @@ int main() {
   p.heights={5,6,7,8};
   assert(terrain.apply_patch_if_new(p));
   assert(terrain.sample_height(0,0,elevation) && elevation==5);
+  TerrainPatch invalid=p;
+  invalid.heights={9};
+  assert(!terrain.apply_decoded_patch(invalid));
+  assert(!terrain.apply_patch_batch({p,invalid}));
+  assert(terrain.sample_height(0,0,elevation) && elevation==5);
   terrain.reset();
   assert(!terrain.any_renderable_cells());
   assert(!terrain.min_max_received_heights(low,high));
