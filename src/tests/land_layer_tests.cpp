@@ -84,6 +84,8 @@ int main() {
   std::vector<DecodedLandPatch> decoded_group;
   assert(decode_land_group(empty_group,sizeof(empty_group),decoded_group));
   assert(decoded_group.empty());
+  const uint8_t missing_terminator[]={0,0,16,0x4c};
+  assert(!decode_land_group(missing_terminator,sizeof(missing_terminator),decoded_group));
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
