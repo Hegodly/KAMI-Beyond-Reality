@@ -10,6 +10,19 @@ namespace kami::world {
 // A visible local scene object from official LLUDP ObjectUpdate formats.
 // Mesh assets, textures and child-link transformations are not resolved yet;
 // only known root volume prims are rendered as neutral geometry proxies.
+// Volume parameters use the wire quantization in the Second Life
+// message_template.msg (no guessed geometry for unsupported cuts/sculpts).
+struct PrimitiveShape {
+  uint8_t path_curve=0, profile_curve=0;
+  uint16_t path_begin=0, path_end=0;
+  uint8_t path_scale_x=100, path_scale_y=100;
+  int8_t path_shear_x=0,path_shear_y=0,path_twist=0,path_twist_begin=0;
+  int8_t radius_offset=0,taper_x=0,taper_y=0;
+  uint8_t revolutions=0;
+  int8_t skew=0;
+  uint16_t profile_begin=0,profile_end=0,profile_hollow=0;
+  bool valid=false;
+};
 struct SceneObject {
   uint32_t local_id=0;
   uint32_t parent_id=0;
@@ -17,6 +30,7 @@ struct SceneObject {
   float x=0,y=0,z=0; // Second Life region coordinates (z is elevation).
   float sx=1,sy=1,sz=1;
   float qx=0,qy=0,qz=0,qw=1;
+  PrimitiveShape shape{};
 };
 struct SceneStats {
   uint64_t full_packets=0;
