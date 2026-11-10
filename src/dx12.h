@@ -39,12 +39,12 @@ public:
     terrain_sample_coverage = 0.0f;
     scene_proxy_roots = 0;
     scene_real_meshes=0;
-    scene_real_meshes=0;
   }
   void prepare_recorded_region() {
     recorded_terrain = false; live_scene = false;
     terrain_sample_coverage = 0.0f;
     scene_proxy_roots = 0;
+    scene_real_meshes=0;
   }
   ~Dx12();
 private:
