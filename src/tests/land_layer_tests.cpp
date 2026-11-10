@@ -1,4 +1,5 @@
 #include "world/land_layer.h"
+#include "world/region_protocol.h"
 #include <cassert>
 #include <cstdint>
 int main() {
@@ -94,6 +95,10 @@ int main() {
   assert(!land_patch_within_region(bounded,256,256));
   assert(land_group_within_region({bounded},512,512));
   assert(!land_group_within_region({bounded},256,256));
+  bounded.x=240;
+  kami::world::TerrainPatch converted;
+  assert(land_patch_to_world(bounded,converted));
+  assert(converted.x==240 && converted.width==16 && converted.heights.size()==256);
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
