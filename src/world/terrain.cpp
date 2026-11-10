@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 namespace kami::world {
 TerrainAssembler::TerrainAssembler(uint32_t width, uint32_t height, float spacing) {
   if (width < 2 || height < 2 || width > 4096 || height > 4096 ||
