@@ -73,6 +73,18 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   value=next;
   return true;
 }
+bool decode_land_group_to_world(const uint8_t* bytes,size_t size,uint32_t width,uint32_t height,std::vector<kami::world::TerrainPatch>& patches) {
+  std::vector<DecodedLandPatch> decoded;
+  if (!decode_land_group_for_region(bytes,size,width,height,decoded)) return false;
+  std::vector<kami::world::TerrainPatch> converted;
+  for (const auto& patch:decoded) {
+    kami::world::TerrainPatch item;
+    if (!land_patch_to_world(patch,item)) return false;
+    converted.push_back(std::move(item));
+  }
+  patches=std::move(converted);
+  return true;
+}
 bool land_patch_to_world(const DecodedLandPatch& source,kami::world::TerrainPatch& target) {
   if ((source.size!=16 && source.size!=32) ||
       source.heights.size()!=size_t(source.size)*source.size) return false;
