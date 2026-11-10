@@ -76,6 +76,10 @@ int main() {
   assert(inverse_land_dct(coefficients,16,reconstructed));
   assert(reconstructed.size()==256);
   for (float h:reconstructed) assert(h==0.0f);
+  std::vector<float> scaled;
+  assert(scale_land_heights(reconstructed,patch,16,scaled));
+  assert(scaled.size()==256);
+  for (float h:scaled) assert(h==1.0f);
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
