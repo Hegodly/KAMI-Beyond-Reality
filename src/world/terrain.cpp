@@ -29,6 +29,14 @@ bool TerrainAssembler::apply_patch_batch(const std::vector<TerrainPatch>& patche
     if (!apply_decoded_patch(patch)) return false;
   return true;
 }
+size_t TerrainAssembler::renderable_cells() const {
+  size_t count = 0;
+  for (uint32_t y=0;y+1<heights_.height;++y)
+    for (uint32_t x=0;x+1<heights_.width;++x)
+      if (has_sample(x,y) && has_sample(x+1,y) &&
+          has_sample(x,y+1) && has_sample(x+1,y+1)) ++count;
+  return count;
+}
 bool TerrainAssembler::build_partial_render_mesh(TerrainMesh& output) const {
   TerrainMesh candidate;
   const auto& h = heights_;
