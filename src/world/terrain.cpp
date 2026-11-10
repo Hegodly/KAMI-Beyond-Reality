@@ -27,6 +27,16 @@ bool TerrainAssembler::apply_patch(uint32_t x, uint32_t y, uint32_t width,
     }
   return true;
 }
+bool validate_mesh(const TerrainMesh& mesh) {
+  if (mesh.vertices.empty() || mesh.indices.empty() ||
+      mesh.indices.size() % 3 != 0 || mesh.vertices.size() > UINT32_MAX ||
+      mesh.indices.size() > UINT32_MAX) return false;
+  for (const auto& v : mesh.vertices)
+    if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
+        !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b)) return false;
+  for (auto i : mesh.indices) if (i >= mesh.vertices.size()) return false;
+  return true;
+}
 bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
   if (source.vertices.empty() || source.indices.empty() ||
       source.indices.size() % 3 != 0 ||
