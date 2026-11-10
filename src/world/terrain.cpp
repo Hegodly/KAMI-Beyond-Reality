@@ -42,6 +42,18 @@ bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
   for (auto i : source.indices) destination.indices.push_back(offset + i);
   return true;
 }
+TerrainMesh make_ground_plane(float size, float elevation) {
+  if (!std::isfinite(size) || !std::isfinite(elevation) || size <= 0.0f)
+    throw std::invalid_argument("Invalid ground plane");
+  const float half = size * 0.5f;
+  TerrainMesh m;
+  m.vertices = {{-half,elevation,-half,.22f,.34f,.25f},
+                {half,elevation,-half,.22f,.34f,.25f},
+                {-half,elevation,half,.22f,.34f,.25f},
+                {half,elevation,half,.22f,.34f,.25f}};
+  m.indices = {0,2,1,1,2,3};
+  return m;
+}
 TerrainMesh make_box_mesh(float x, float y, float z, float sx, float sy, float sz) {
   if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) ||
       !std::isfinite(sx) || !std::isfinite(sy) || !std::isfinite(sz) ||
