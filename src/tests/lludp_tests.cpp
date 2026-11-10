@@ -41,6 +41,11 @@ int main() {
   p.payload = {0xFF,0xFF,0x01,0x02,0x77};
   assert(kami::sl::decode_message_id(p,message_id,body_offset));
   assert(message_id == 0x10102 && body_offset == 4);
+  p.payload = {0x12,0xAA,0xBB};
+  std::vector<uint8_t> message_body;
+  assert(kami::sl::extract_message_body(p,message_body));
+  assert(message_body.size()==2 && message_body[0]==0xAA);
+  assert(!kami::sl::is_land_layer(p));
   const uint8_t short_packet[] = {0,0,0};
   assert(!parse_packet(short_packet,sizeof(short_packet),p));
 }
