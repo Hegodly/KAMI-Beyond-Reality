@@ -7,6 +7,15 @@ uint32_t be32(const uint8_t* p) {
          (uint32_t(p[2]) << 8) | uint32_t(p[3]);
 }
 }
+bool extract_land_layer_data(const Packet& packet, std::vector<uint8_t>& compressed) {
+  if (!is_land_layer(packet)) return false;
+  std::vector<uint8_t> body;
+  if (!extract_message_body(packet, body) || body.size() < 2) return false;
+  const size_t length = size_t(body[0]) | (size_t(body[1]) << 8);
+  if (!length || length != body.size() - 2) return false;
+  compressed.assign(body.begin() + 2, body.end());
+  return true;
+}
 bool is_land_layer(const Packet& packet) {
   return is_message(packet, land_layer_message_id);
 }
