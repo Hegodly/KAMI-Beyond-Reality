@@ -11,6 +11,9 @@ struct TerrainStreamStats {
   uint64_t decoded = 0;
   uint64_t ignored = 0;
   uint64_t invalid = 0;
+  uint64_t land_packets = 0;
+  uint64_t malformed_layer = 0;
+  uint64_t invalid_patch = 0;
 };
 class TerrainStream {
 public:

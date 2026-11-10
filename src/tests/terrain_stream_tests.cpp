@@ -39,6 +39,9 @@ int main() {
   datagram.insert(datagram.end(),group.begin(),group.end());
   assert(stream.ingest_datagram(datagram.data(),datagram.size()));
   assert(stream.stats().decoded==1 && stream.revision()==1);
+  assert(stream.stats().land_packets==1);
+  assert(stream.stats().malformed_layer==0);
+  assert(stream.stats().invalid_patch==0);
   assert(stream.terrain().received_samples()==256);
   assert(stream.terrain().renderable_cells()==225);
   kami::world::TerrainMesh mesh;
@@ -50,6 +53,9 @@ int main() {
   datagram[7]=55;
   assert(!stream.ingest_datagram(datagram.data(),datagram.size()));
   assert(stream.stats().invalid==2 && stream.stats().ignored==1);
+  assert(stream.stats().land_packets==2);
+  assert(stream.stats().malformed_layer==1);
+  assert(stream.stats().invalid_patch==0);
   stream.reset();
   assert(stream.stats().packets==0 && stream.revision()==0);
   assert(stream.terrain().received_samples()==0);

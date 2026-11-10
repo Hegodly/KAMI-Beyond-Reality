@@ -258,11 +258,16 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
       }
       if (connected_session && live_terrain && GetTickCount64()-live_last_status_ms>=1000) {
         const auto& stats=live_terrain->stats();
-        wchar_t message[240]{};
-        swprintf_s(message,L"Simulator packets: %llu | Terrain decoded: %llu | Rejected: %llu | Land: %.1f%%",
+        wchar_t message[320]{};
+        swprintf_s(message,
+          L"UDP: %llu | Land packets: %llu | Decoded: %llu\n"
+          L"Bad layer framing: %llu | Patch decoding failed: %llu\n"
+          L"Real land samples: %.1f%%",
           static_cast<unsigned long long>(stats.packets),
+          static_cast<unsigned long long>(stats.land_packets),
           static_cast<unsigned long long>(stats.decoded),
-          static_cast<unsigned long long>(stats.invalid),
+          static_cast<unsigned long long>(stats.malformed_layer),
+          static_cast<unsigned long long>(stats.invalid_patch),
           live_terrain->terrain().completion_ratio()*100.0f);
         SetWindowTextW(status_text,message);
         live_last_status_ms=GetTickCount64();

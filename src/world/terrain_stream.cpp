@@ -16,8 +16,18 @@ bool TerrainStream::ingest_packet(const kami::sl::Packet& packet) {
     ++stats_.ignored;
     return false;
   }
-  if (!terrain_.apply_land_packet(packet)) {
+  ++stats_.land_packets;
+  // Distinguish a malformed LayerData message body from a valid message
+  // whose compressed patch payload our decoder cannot reconstruct.
+  std::vector<uint8_t> compressed;
+  if (!kami::sl::extract_land_layer_data(packet,compressed)) {
     ++stats_.invalid;
+    ++stats_.malformed_layer;
+    return false;
+  }
+  if (!terrain_.apply_land_layer(compressed.data(),compressed.size())) {
+    ++stats_.invalid;
+    ++stats_.invalid_patch;
     return false;
   }
   ++stats_.decoded;
