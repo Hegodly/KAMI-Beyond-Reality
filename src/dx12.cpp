@@ -148,12 +148,16 @@ void Dx12::init(HWND hwnd) {
   dsv_desc.NumDescriptors = 1;
   dsv_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
   ok(device->CreateDescriptorHeap(&dsv_desc, IID_PPV_ARGS(&dsv_heap)));
+  create_depth(desc.Width, desc.Height);
+}
+void Dx12::create_depth(UINT width, UINT height) {
+  depth_buffer.Reset();
   D3D12_HEAP_PROPERTIES default_heap{};
   default_heap.Type = D3D12_HEAP_TYPE_DEFAULT;
   D3D12_RESOURCE_DESC depth_desc{};
   depth_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-  depth_desc.Width = desc.Width;
-  depth_desc.Height = desc.Height;
+  depth_desc.Width = width;
+  depth_desc.Height = height;
   depth_desc.DepthOrArraySize = 1;
   depth_desc.MipLevels = 1;
   depth_desc.Format = DXGI_FORMAT_D32_FLOAT;
@@ -169,6 +173,25 @@ void Dx12::init(HWND hwnd) {
   device->CreateDepthStencilView(depth_buffer.Get(), nullptr,
     dsv_heap->GetCPUDescriptorHandleForHeapStart());
 }
+void Dx12::resize(UINT width, UINT height) {
+  if (!width || !height || !swap || (viewport.Width == width && viewport.Height == height)) return;
+  sync();
+  for (auto& buffer : back) buffer.Reset();
+  depth_buffer.Reset();
+  ok(swap->ResizeBuffers(count, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0));
+  frame_index = swap->GetCurrentBackBufferIndex();
+  auto cpu = heap->GetCPUDescriptorHandleForHeapStart();
+  for (UINT i = 0; i < count; ++i) {
+    ok(swap->GetBuffer(i, IID_PPV_ARGS(&back[i])));
+    device->CreateRenderTargetView(back[i].Get(), nullptr, cpu);
+    cpu.ptr += rtv_step;
+  }
+  viewport.Width = static_cast<float>(width);
+  viewport.Height = static_cast<float>(height);
+  scissor.right = static_cast<LONG>(width);
+  scissor.bottom = static_cast<LONG>(height);
+  create_depth(width, height);
+}
 void Dx12::sync() {
   if (!queue || !fence) return;
   auto value = ++fence_value;
@@ -182,6 +205,13 @@ void Dx12::key(UINT key_code, bool pressed) {
   if (key_code < 256) keys[key_code] = pressed;
 }
 void Dx12::frame() {
+  RECT rect{};
+  if (window_handle && GetClientRect(window_handle, &rect)) {
+    UINT width = static_cast<UINT>(std::max<LONG>(0, rect.right - rect.left));
+    UINT height = static_cast<UINT>(std::max<LONG>(0, rect.bottom - rect.top));
+    if (!width || !height) return;
+    resize(width, height);
+  }
   const ULONGLONG now = GetTickCount64();
   float dt = last_tick ? std::min(0.05f, static_cast<float>(now - last_tick) * 0.001f) : 0.016f;
   last_tick = now;

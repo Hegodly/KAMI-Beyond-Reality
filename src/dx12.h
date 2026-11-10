@@ -12,6 +12,8 @@ public:
   ~Dx12();
 private:
   void sync();
+  void resize(UINT width, UINT height);
+  void create_depth(UINT width, UINT height);
   static constexpr UINT count = 2;
   Microsoft::WRL::ComPtr<ID3D12Device> device;
   Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue;
