@@ -128,3 +128,24 @@ asset remains a clearly approximate primitive placeholder. The main title
 and status panel distinguish real decoded mesh geometry from proxy objects.
 Live in-world correctness still needs testing. Do not treat a successful
 CI run as proof that every object on a decorated region will load.
+
+## LOD fallback and Second Life face UVs
+
+Many uploaded meshes do not contain a usable high-detail LOD. KAMI now accepts
+the official absent-LOD marker (offset -1, size 0), and tries high, medium,
+low, then lowest-detail compressed geometry. The first validated block is
+rendered, avoiding a fake proxy when a lower LOD is available.
+
+KAMI parses each face's texture repeat/scale, S/T offsets, and packed rotation
+from live TextureEntry records. DX12 passes the unwrapped coordinates through
+its vertex shader and computes repeated atlas samples **per pixel**, including
+negative and tiled UVs. Atlas lookups are bounded to their 64x64 source tile.
+A low-alpha fragment is discarded so transparent holes in foliage textures
+no longer show opaque rectangle backgrounds. This is an **alpha cutout** path,
+not sorted alpha blending: glass, tinted windows and semi-transparent clothing
+still need a separate transparency render pass. Complex material transforms,
+correct physical lighting, and glTF/PBR remain unfinished.
+
+The new header, texture-transform, scene and shader tests use synthetic data.
+The actual Second Life simulator, high-detail textures and your parcel still
+require an in-world check.
