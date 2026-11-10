@@ -2,7 +2,15 @@
 #include <windows.h>
 #include <exception>
 namespace {
+kami::Dx12* active_renderer = nullptr;
 LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+  if (active_renderer && (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN ||
+                          msg == WM_KEYUP || msg == WM_SYSKEYUP)) {
+    active_renderer->key(static_cast<UINT>(wp), msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+  }
+  if (msg == WM_KILLFOCUS && active_renderer) {
+    for (UINT key = 0; key < 256; ++key) active_renderer->key(key, false);
+  }
   if (msg == WM_DESTROY) { PostQuitMessage(0); return 0; }
   return DefWindowProcW(hwnd, msg, wp, lp);
 }
@@ -20,11 +28,12 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
     if (!window) return 1;
     kami::Dx12 renderer;
     renderer.init(window);
+    active_renderer = &renderer;
     ShowWindow(window, show);
     MSG msg{};
     for (;;) {
       while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE)) {
-        if (msg.message == WM_QUIT) return static_cast<int>(msg.wParam);
+        if (msg.message == WM_QUIT) { active_renderer = nullptr; return static_cast<int>(msg.wParam); }
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
       }
