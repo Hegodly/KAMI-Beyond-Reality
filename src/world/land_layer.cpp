@@ -72,6 +72,11 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   value=next;
   return true;
 }
+bool land_group_within_region(const std::vector<DecodedLandPatch>& patches,uint32_t region_width,uint32_t region_height) {
+  for (const auto& patch:patches)
+    if (!land_patch_within_region(patch,region_width,region_height)) return false;
+  return true;
+}
 bool land_patch_within_region(const DecodedLandPatch& patch,uint32_t region_width,uint32_t region_height) {
   return patch.size>=2 && patch.x<region_width && patch.y<region_height &&
     patch.size<=region_width-patch.x && patch.size<=region_height-patch.y &&
