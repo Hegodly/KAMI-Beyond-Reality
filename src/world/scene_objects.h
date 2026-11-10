@@ -5,6 +5,7 @@
 #include "texture_atlas.h"
 #include "texture_asset_queue.h"
 #include "mesh_discovery.h"
+#include "mesh_asset_queue.h"
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -56,7 +57,9 @@ public:
   // Returns true only when the message belongs to this subsystem and
   // is well-formed; ignored other message IDs do not count as errors.
   bool ingest(const kami::sl::Packet& packet);
-  bool build_proxy_mesh(TerrainMesh& output,size_t limit=2000,const TextureAtlas* atlas=nullptr) const;
+  bool build_proxy_mesh(TerrainMesh& output,size_t limit=2000,
+                        const TextureAtlas* atlas=nullptr,
+                        const MeshAssetQueue* assets=nullptr) const;
   size_t visible_roots() const;
   size_t renderable_prims() const;
   size_t objects_with_face_colors() const;
