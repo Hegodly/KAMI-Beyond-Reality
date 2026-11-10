@@ -209,6 +209,9 @@ void Dx12::create_depth(UINT width, UINT height) {
 }
 void Dx12::resize(UINT width, UINT height) {
   if (!width || !height || !swap || (viewport.Width == width && viewport.Height == height)) return;
+  if (width > D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION ||
+      height > D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION)
+    throw std::runtime_error("DX12 viewport exceeds supported dimensions");
   sync();
   for (auto& buffer : back) buffer.Reset();
   depth_buffer.Reset();
