@@ -20,6 +20,9 @@ public:
   bool set_region_scene(const world::TerrainAssembler& terrain,
                         const world::SceneObjects* objects);
   bool showing_recorded_terrain() const { return recorded_terrain; }
+  // 0=not advertised, 1=looking up, 2=available, 3=unavailable.
+  // Opaque bearer capability URLs must never appear in the title.
+  void set_asset_cap_state(int state) { asset_cap_state=state; }
   void set_texture_stage_stats(size_t staged,size_t queued,size_t fetching) {
     staged_encoded_textures=staged;
     waiting_texture_assets=queued;
@@ -83,5 +86,6 @@ private:
   size_t staged_encoded_textures = 0;
   size_t waiting_texture_assets = 0;
   size_t fetching_texture_assets = 0;
+  int asset_cap_state = 0;
 };
 }
