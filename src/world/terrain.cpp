@@ -42,6 +42,15 @@ bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
   for (auto i : source.indices) destination.indices.push_back(offset + i);
   return true;
 }
+bool scale_mesh(TerrainMesh& mesh, float sx, float sy, float sz) {
+  if (!std::isfinite(sx) || !std::isfinite(sy) || !std::isfinite(sz) ||
+      sx <= 0 || sy <= 0 || sz <= 0) return false;
+  for (const auto& v : mesh.vertices)
+    if (!std::isfinite(v.x * sx) || !std::isfinite(v.y * sy) ||
+        !std::isfinite(v.z * sz)) return false;
+  for (auto& v : mesh.vertices) { v.x *= sx; v.y *= sy; v.z *= sz; }
+  return true;
+}
 bool tint_mesh(TerrainMesh& mesh, float r, float g, float b) {
   if (!std::isfinite(r) || !std::isfinite(g) || !std::isfinite(b) ||
       r < 0 || g < 0 || b < 0) return false;
