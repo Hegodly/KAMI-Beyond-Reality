@@ -35,6 +35,9 @@ int main() {
   p.payload = {0x12,0x77};
   assert(kami::sl::decode_message_id(p,message_id,body_offset));
   assert(message_id == 0x12 && body_offset == 1);
+  p.payload = {0xFF,0x42,0x77};
+  assert(kami::sl::decode_message_id(p,message_id,body_offset));
+  assert(message_id == 0x142 && body_offset == 2);
   const uint8_t short_packet[] = {0,0,0};
   assert(!parse_packet(short_packet,sizeof(short_packet),p));
 }
