@@ -19,6 +19,11 @@ int main() {
   LandBitReader excessive(bytes,sizeof(bytes));
   assert(!excessive.read_bits(33,v));
   assert(excessive.bits_remaining()==32);
+  const uint8_t signed_data[]={0xF1};
+  LandBitReader signed_reader(signed_data,1);
+  int32_t signed_value=0;
+  assert(signed_reader.read_signed_bits(4,signed_value) && signed_value==-1);
+  assert(signed_reader.read_signed_bits(4,signed_value) && signed_value==1);
   LandBitReader header_reader(bytes,sizeof(bytes));
   LandGroupHeader header;
   assert(read_land_group_header(header_reader,header));
