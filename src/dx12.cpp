@@ -151,6 +151,8 @@ bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
   sync();
   const auto& vertices = mesh.vertices;
   const auto& indices = mesh.indices;
+  Microsoft::WRL::ComPtr<ID3D12Resource> next_vertex_buffer;
+  Microsoft::WRL::ComPtr<ID3D12Resource> next_index_buffer;
   const UINT new_index_count = static_cast<UINT>(indices.size());
   D3D12_HEAP_PROPERTIES upload{};
   upload.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -163,24 +165,26 @@ bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
   resource.SampleDesc.Count = 1;
   resource.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
   ok(device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &resource,
-    D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertex_buffer)));
+    D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&next_vertex_buffer)));
   void* mapped = nullptr;
   D3D12_RANGE read_range{0, 0};
-  ok(vertex_buffer->Map(0, &read_range, &mapped));
+  ok(next_vertex_buffer->Map(0, &read_range, &mapped));
   std::memcpy(mapped, vertices.data(), static_cast<size_t>(resource.Width));
-  vertex_buffer->Unmap(0, nullptr);
-  vertex_view.BufferLocation = vertex_buffer->GetGPUVirtualAddress();
+  next_vertex_buffer->Unmap(0, nullptr);
+  vertex_view.BufferLocation = next_vertex_buffer->GetGPUVirtualAddress();
   vertex_view.SizeInBytes = static_cast<UINT>(resource.Width);
   vertex_view.StrideInBytes = sizeof(world::TerrainVertex);
   resource.Width = indices.size() * sizeof(uint32_t);
   ok(device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &resource,
-    D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&index_buffer)));
-  ok(index_buffer->Map(0, &read_range, &mapped));
+    D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&next_index_buffer)));
+  ok(next_index_buffer->Map(0, &read_range, &mapped));
   std::memcpy(mapped, indices.data(), static_cast<size_t>(resource.Width));
-  index_buffer->Unmap(0, nullptr);
-  index_view.BufferLocation = index_buffer->GetGPUVirtualAddress();
+  next_index_buffer->Unmap(0, nullptr);
+  index_view.BufferLocation = next_index_buffer->GetGPUVirtualAddress();
   index_view.SizeInBytes = static_cast<UINT>(resource.Width);
   index_view.Format = DXGI_FORMAT_R32_UINT;
+  vertex_buffer = std::move(next_vertex_buffer);
+  index_buffer = std::move(next_index_buffer);
   index_count = new_index_count;
   return true;
 }
