@@ -89,9 +89,11 @@ void Dx12::init(HWND hwnd) {
     }
   )";
   Microsoft::WRL::ComPtr<ID3DBlob> vs, ps, errors;
-  ok(D3DCompile(shader, std::strlen(shader), nullptr, nullptr, nullptr, "VSMain", "vs_5_0", 0, 0, &vs, &errors));
+  HRESULT vs_result = D3DCompile(shader, std::strlen(shader), nullptr, nullptr, nullptr, "VSMain", "vs_5_0", 0, 0, &vs, &errors);
+  if (FAILED(vs_result)) throw std::runtime_error(errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Vertex shader compilation failed");
   errors.Reset();
-  ok(D3DCompile(shader, std::strlen(shader), nullptr, nullptr, nullptr, "PSMain", "ps_5_0", 0, 0, &ps, &errors));
+  HRESULT ps_result = D3DCompile(shader, std::strlen(shader), nullptr, nullptr, nullptr, "PSMain", "ps_5_0", 0, 0, &ps, &errors);
+  if (FAILED(ps_result)) throw std::runtime_error(errors ? static_cast<const char*>(errors->GetBufferPointer()) : "Pixel shader compilation failed");
   D3D12_ROOT_SIGNATURE_DESC root_desc{};
   D3D12_ROOT_PARAMETER camera_param{};
   camera_param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
