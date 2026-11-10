@@ -30,13 +30,18 @@ kami::sl::Packet make_compressed(uint32_t id=100,uint32_t parent=0,uint8_t pcode
   b.insert(b.end(),content.begin(),content.end());
   kami::sl::Packet p;p.payload=std::move(b);return p;
 }
-kami::sl::Packet make_full(uint32_t id) {
+kami::sl::Packet make_full(uint32_t id,uint8_t path_curve=0,uint8_t profile_curve=0,uint16_t path_cut=0) {
   std::vector<uint8_t> b{12};region(b);
   u32(b,id);u8(b,0);zeros(b,16);u32(b,0);
   u8(b,9);u8(b,0);u8(b,0);vec(b,2,4,6);
   u8(b,60);vec(b,128,128,25);zeros(b,24);
   vec(b,0,0,0);zeros(b,12);
-  u32(b,0);u32(b,0);zeros(b,23);
+  u32(b,0);u32(b,0);
+  u8(b,path_curve);u8(b,profile_curve);
+  u16(b,path_cut);u16(b,0);
+  u8(b,100);u8(b,100);
+  zeros(b,9); // shear/twist/radius/taper/revolutions/skew
+  u16(b,0);u16(b,0);u16(b,0); // profile begin/end/hollow
   u16(b,0);u8(b,0);u16(b,0);u16(b,0);
   u8(b,0);zeros(b,4);u8(b,0);u8(b,0);u8(b,0);
   zeros(b,16+16+4+1+4+1+12+12);
@@ -92,6 +97,38 @@ int main() {
   auto avatar=make_compressed(150,0,47);
   assert(scene.ingest(avatar)&&!scene.get(150));
   assert(scene.stats().unsupported_objects>=1);
+  // Shapes are determined by actual official full-update PathCurve
+  // and ProfileCurve bytes, not guessed from object scale alone.
+  kami::world::SceneObjects primitives;
+  assert(primitives.ingest(make_full(300,0x10,0x00)));
+  auto* cylinder=primitives.get(300);
+  assert(cylinder && cylinder->shape.valid);
+  assert(cylinder->shape.path_curve==0x10);
+  assert(cylinder->shape.profile_curve==0);
+  assert(cylinder->shape.path_scale_x==100);
+  kami::world::TerrainMesh round_mesh;
+  assert(primitives.build_proxy_mesh(round_mesh));
+  assert(round_mesh.vertices.size()==50); // 24-sided cylinder + cap centers
+  assert(round_mesh.indices.size()==288);
+  assert(primitives.ingest(make_kill(300)));
+  assert(primitives.ingest(make_full(301,0x20,0x05)));
+  kami::world::TerrainMesh sphere;
+  assert(primitives.build_proxy_mesh(sphere));
+  assert(sphere.vertices.size()==325);
+  assert(sphere.indices.size()==1728);
+  assert(primitives.ingest(make_kill(301)));
+  assert(primitives.ingest(make_full(302,0x10,0x03)));
+  kami::world::TerrainMesh triangle;
+  assert(primitives.build_proxy_mesh(triangle));
+  assert(triangle.vertices.size()==8);
+  assert(triangle.indices.size()==36);
+  assert(primitives.ingest(make_kill(302)));
+  // Nonzero path cut cannot be safely modeled by the uncut primitive mesh.
+  assert(primitives.ingest(make_full(303,0x10,0x00,500)));
+  kami::world::TerrainMesh fallback;
+  assert(primitives.build_proxy_mesh(fallback));
+  assert(fallback.vertices.size()==8);
+  assert(fallback.indices.size()==36);
   scene.reset();
   assert(scene.total_objects()==0 && scene.revision()==0);
 }
