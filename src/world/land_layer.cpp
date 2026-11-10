@@ -6,6 +6,11 @@ LandBitReader::LandBitReader(const uint8_t* bytes,size_t size):bytes_(bytes),siz
 size_t LandBitReader::bits_remaining() const {
   return bytes_ && bit_position_ <= size_*8 ? size_*8-bit_position_ : 0;
 }
+bool LandBitReader::skip_bits(size_t count) {
+  if (count>bits_remaining()) return false;
+  bit_position_+=count;
+  return true;
+}
 bool LandBitReader::peek_bits(unsigned count,uint32_t& value) const {
   if (count>32 || count>bits_remaining()) return false;
   uint32_t next=0;
