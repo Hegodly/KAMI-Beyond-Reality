@@ -26,7 +26,7 @@ bool TerrainAssembler::apply_patch_batch(const std::vector<TerrainPatch>& patche
   for (const auto& patch : patches)
     if (!validate_patch(patch, heights_)) return false;
   for (const auto& patch : patches)
-    if (!apply_patch_if_new(patch)) return false;
+    if (!apply_decoded_patch(patch)) return false;
   return true;
 }
 bool TerrainAssembler::any_renderable_cells() const {
