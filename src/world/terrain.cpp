@@ -27,6 +27,21 @@ bool TerrainAssembler::apply_patch(uint32_t x, uint32_t y, uint32_t width,
     }
   return true;
 }
+bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
+  if (source.vertices.empty() || source.indices.empty() ||
+      source.indices.size() % 3 != 0 ||
+      destination.vertices.size() > UINT32_MAX - source.vertices.size() ||
+      destination.indices.size() > UINT32_MAX - source.indices.size()) return false;
+  for (const auto& v : source.vertices)
+    if (!std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z) ||
+        !std::isfinite(v.r) || !std::isfinite(v.g) || !std::isfinite(v.b)) return false;
+  for (auto i : source.indices) if (i >= source.vertices.size()) return false;
+  const auto offset = static_cast<uint32_t>(destination.vertices.size());
+  destination.vertices.insert(destination.vertices.end(), source.vertices.begin(), source.vertices.end());
+  destination.indices.reserve(destination.indices.size() + source.indices.size());
+  for (auto i : source.indices) destination.indices.push_back(offset + i);
+  return true;
+}
 TerrainMesh make_terrain_mesh(const Heightfield& h) {
   if (!h.valid() || !std::isfinite(h.spacing) || h.spacing <= 0.0f)
     throw std::invalid_argument("Invalid heightfield");
