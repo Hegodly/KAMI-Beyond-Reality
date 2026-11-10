@@ -72,6 +72,27 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   value=next;
   return true;
 }
+bool inverse_land_dct(const std::vector<int32_t>& coefficients,unsigned patch_size,std::vector<float>& samples) {
+  if ((patch_size!=16 && patch_size!=32) ||
+      coefficients.size()!=size_t(patch_size)*patch_size) return false;
+  constexpr double pi=3.14159265358979323846;
+  const double n=static_cast<double>(patch_size);
+  std::vector<float> output(coefficients.size(),0.0f);
+  for (unsigned y=0;y<patch_size;++y) for (unsigned x=0;x<patch_size;++x) {
+    double sum=0;
+    for (unsigned v=0;v<patch_size;++v) for (unsigned u=0;u<patch_size;++u) {
+      const double au=u?1.0:0.7071067811865476;
+      const double av=v?1.0:0.7071067811865476;
+      sum+=au*av*double(coefficients[size_t(v)*patch_size+u])*
+        std::cos((2*x+1)*u*pi/(2*n))*std::cos((2*y+1)*v*pi/(2*n));
+    }
+    const double height=2.0*sum/n;
+    if (!std::isfinite(height) || std::abs(height)>1.0e8) return false;
+    output[size_t(y)*patch_size+x]=static_cast<float>(height);
+  }
+  samples=std::move(output);
+  return true;
+}
 bool decode_land_patch_coordinates(uint16_t patch_id,unsigned patch_size,uint32_t& x,uint32_t& y) {
   if (patch_size!=16 && patch_size!=32) return false;
   const uint32_t patch_x=patch_id & 0x1fu;
