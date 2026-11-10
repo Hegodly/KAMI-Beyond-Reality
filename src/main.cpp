@@ -59,7 +59,7 @@ void create_login(HWND window, HINSTANCE instance) {
   auto add = [&](const wchar_t* cls, const wchar_t* caption, DWORD flags,
                  int x, int y, int w, int h, int id = 0) {
     HWND c = CreateWindowExW(0, cls, caption, WS_CHILD | WS_VISIBLE | flags,
-      x, y, w, h, login_panel,
+      x + 48, y + 48, w, h, window,
       reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), instance, nullptr);
     if (c) {
       SendMessageW(c, WM_SETFONT, reinterpret_cast<WPARAM>(ui_font), TRUE);
