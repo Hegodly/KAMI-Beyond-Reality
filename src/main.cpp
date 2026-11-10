@@ -217,6 +217,22 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           }
         }
       }
+      if (connected_session && live_terrain) {
+        connected_session->poll([&](const kami::sl::Packet& packet,
+                                    const kami::sl::MessageId&) {
+          live_terrain->ingest_packet(packet);
+        },128);
+        static uint64_t uploaded_revision=0;
+        static ULONGLONG last_upload_ms=0;
+        const ULONGLONG time=GetTickCount64();
+        if (live_terrain->revision()!=uploaded_revision &&
+            time-last_upload_ms>=200 &&
+            renderer.set_region_terrain(live_terrain->terrain())) {
+          uploaded_revision=live_terrain->revision();
+          last_upload_ms=time;
+          show_demo(window);
+        }
+      }
       if (IsIconic(window)) { WaitMessage(); continue; }
       renderer.frame();
     }
