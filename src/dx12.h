@@ -14,6 +14,7 @@ public:
   // Call from the render thread, after init().
   bool set_world_mesh(const world::TerrainMesh& mesh);
   bool set_region_terrain(const world::TerrainAssembler& terrain);
+  bool showing_recorded_terrain() const { return recorded_terrain; }
   ~Dx12();
 private:
   void sync();
@@ -50,5 +51,6 @@ private:
   bool mouse_tracking = false;
   bool keys[256]{};
   HWND window_handle = nullptr;
+  bool recorded_terrain = false;
 };
 }
