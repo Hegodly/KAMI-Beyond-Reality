@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <utility>
+#include <initializer_list>
 namespace kami::world {
 namespace {
 using Field=std::array<std::array<uint8_t,16>,TextureEntries::max_faces>;

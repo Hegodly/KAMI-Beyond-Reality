@@ -20,5 +20,5 @@ struct TextureEntries {
 // per-face exception masks. Transactional: failed payloads cannot corrupt
 // previously decoded colors. No external asset requests are performed.
 bool parse_texture_entries(const uint8_t* data,size_t bytes,
-                           TextureEntries& out,size_t face_count=max_faces);
+                           TextureEntries& out,size_t face_count=TextureEntries::max_faces);
 }
