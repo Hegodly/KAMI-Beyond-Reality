@@ -75,7 +75,7 @@ void Dx12::init(HWND hwnd) {
       float3 dpdx = ddx(input.world_position);
       float3 dpdy = ddy(input.world_position);
       float3 normal = normalize(cross(dpdy, dpdx));
-      normal = faceforward(normal, -normal, normal);
+      normal = normalize(normal);
       float3 sun_direction = normalize(float3(0.35, 0.8, -0.4));
       float diffuse = saturate(abs(dot(normal, sun_direction)));
       float lighting = 0.30 + 0.70 * diffuse;
@@ -294,7 +294,7 @@ void Dx12::frame() {
   commands->ResourceBarrier(1, &barrier);
   auto cpu = heap->GetCPUDescriptorHandleForHeapStart();
   cpu.ptr += frame_index * rtv_step;
-  const float clear[] = {0.015f, 0.025f, 0.045f, 1.0f};
+  const float clear[] = {0.07f, 0.12f, 0.20f, 1.0f};
   commands->ClearRenderTargetView(cpu, clear, 0, nullptr);
   auto depth_handle = dsv_heap->GetCPUDescriptorHandleForHeapStart();
   commands->ClearDepthStencilView(depth_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
