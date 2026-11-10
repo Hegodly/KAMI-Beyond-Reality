@@ -41,4 +41,6 @@ int main() {
   const uint8_t invalid_header[]={0,1,8,0x4C};
   LandBitReader bad(invalid_header,sizeof(invalid_header));
   assert(!read_land_group_header(bad,header));
+  LandBitReader truncated(patch_bytes,2);
+  assert(!read_land_patch_header(truncated,patch));
 }
