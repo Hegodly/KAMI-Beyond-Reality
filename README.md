@@ -81,5 +81,18 @@ The viewer status panel distinguishes **color entries** from **texture UUIDs
 asset; it does not mean an image has been downloaded or rendered. The parser
 bounds input to 4096 bytes and at most 45 faces, ignores malformed appearance
 fields without inventing colors, and retains verified appearance across
-incremental object updates. Asset fetch and decode are the next distinct
-workstream, not yet wired into the live DX12 draw path.
+incremental object updates. KAMI now includes a **bounded encoded-asset staging path** using the
+simulator's authenticated HTTPS `ViewerAsset` capability. After login, an
+asynchronous task requests the capability from the login-provided seed URL,
+then fetches one referenced texture at a time. Only raw JPEG2000 codestream
+or JP2 bytes are staged in memory (4 MiB per asset, 32 MiB overall, 2048
+asset IDs maximum); no files are written automatically. Invalid responses
+and unreferenced assets are discarded, and reconnects do not apply late
+responses to a different session.
+
+**This does not yet display downloaded image textures.** JPEG2000 image
+decoding, UV coordinates, GPU image uploads, transparency, and glTF/PBR
+material rendering are still missing. The title bar now displays the
+ViewerAsset capability state and encoded JPEG2000 staging counts. A
+successful CI build proves the URL rules and synthetic fixture tests,
+not that the live simulator serves this endpoint in every region.
