@@ -1,4 +1,5 @@
 #include "land_layer.h"
+#include "region_protocol.h"
 #include <cstring>
 #include <cmath>
 #include <utility>
@@ -70,6 +71,17 @@ bool LandBitReader::read_bits(unsigned count,uint32_t& value) {
   }
   bit_position_+=count;
   value=next;
+  return true;
+}
+bool land_patch_to_world(const DecodedLandPatch& source,kami::world::TerrainPatch& target) {
+  if ((source.size!=16 && source.size!=32) ||
+      source.heights.size()!=size_t(source.size)*source.size) return false;
+  for (float value:source.heights) if (!std::isfinite(value)) return false;
+  kami::world::TerrainPatch converted;
+  converted.x=source.x;converted.y=source.y;
+  converted.width=source.size;converted.height=source.size;
+  converted.heights=source.heights;
+  target=std::move(converted);
   return true;
 }
 bool decode_land_group_for_region(const uint8_t* bytes,size_t size,uint32_t width,uint32_t height,std::vector<DecodedLandPatch>& patches) {
