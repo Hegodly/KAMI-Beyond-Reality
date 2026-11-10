@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 #include <stdexcept>
 #include <vector>
 namespace kami::world {
@@ -18,7 +19,8 @@ struct Heightfield {
   }
   bool valid() const {
     return width >= 2 && height >= 2 && width <= 4096 && height <= 4096 &&
-           spacing > 0.0f && elevations.size() == size_t(width) * height;
+           std::isfinite(spacing) && spacing > 0.0f &&
+           elevations.size() == size_t(width) * height;
   }
 };
 struct Region {
