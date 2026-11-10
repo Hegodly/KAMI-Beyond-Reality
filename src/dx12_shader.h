@@ -41,9 +41,18 @@ inline constexpr const char* terrain_dx12_shader = R"(
       float lighting = 0.30 + 0.70 * diffuse;
       float distance_fog = saturate((length(input.world_position.xz) - 120.0) / 260.0);
       float3 sky = float3(0.07, 0.12, 0.20);
-      float3 sampled = atlas_texture.Sample(atlas_sampler, input.uv).rgb;
-      float3 albedo = lerp(input.color, input.color * sampled,
-                           saturate(input.texture_mix));
+      // A zero slot represents untextured geometry. Slots 1..64 select
+      // one of the 8x8 decoded atlas images. Keep UVs unwrapped until
+      // the pixel stage: vertex-level frac would break repeated walls.
+      float3 sampled = float3(1.0, 1.0, 1.0);
+      if (input.texture_mix > 0.5) {
+        float tile = floor(input.texture_mix - 0.5);
+        float2 cell = float2(fmod(tile, 8.0), floor(tile / 8.0));
+        float2 tiled_uv = frac(input.uv);
+        float2 atlas_uv = (cell * 64.0 + 0.5 + tiled_uv * 63.0) / 512.0;
+        sampled = atlas_texture.Sample(atlas_sampler, atlas_uv).rgb;
+      }
+      float3 albedo = input.color * sampled;
       float3 lit = albedo * lighting;
       float3 color = lerp(lit, sky, distance_fog * 0.72);
       color = color / (1.0 + color);
