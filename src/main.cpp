@@ -1,4 +1,8 @@
 #include "dx12.h"
+#include "world/terrain_capture.h"
+#include <commdlg.h>
+#include <filesystem>
+#include <fstream>
 #include <windows.h>
 #include <exception>
 #include <vector>
@@ -12,10 +16,36 @@ HFONT ui_font = nullptr;
 HBRUSH dark_brush = nullptr;
 constexpr int LOGIN_BUTTON = 1001;
 constexpr int DEMO_BUTTON = 1002;
+constexpr int CAPTURE_BUTTON = 1003;
 void show_demo(HWND window) {
   for (HWND c : ui_controls) ShowWindow(c, SW_HIDE);
   if (login_panel) ShowWindow(login_panel, SW_HIDE);
   if (active_renderer) SetFocus(window);
+}
+void open_capture(HWND window) {
+  wchar_t filename[32768]{};
+  static constexpr wchar_t filter[] = L"KAMI terrain captures (*.kudp)\0*.kudp\0All files (*.*)\0*.*\0";
+  OPENFILENAMEW dialog{};
+  dialog.lStructSize = sizeof(dialog);
+  dialog.hwndOwner = window;
+  dialog.lpstrFilter = filter;
+  dialog.lpstrFile = filename;
+  dialog.nMaxFile = static_cast<DWORD>(sizeof(filename)/sizeof(filename[0]));
+  dialog.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+  if (!GetOpenFileNameW(&dialog)) return;
+  std::ifstream capture(std::filesystem::path(filename), std::ios::binary);
+  kami::world::TerrainStream replay(256, 256);
+  kami::world::CaptureSummary summary;
+  if (!capture || !kami::world::replay_capture(capture, replay, summary)) {
+    SetWindowTextW(status_text,
+      L"Invalid or empty KAMIUDP1 capture. No world geometry was replaced.");
+    return;
+  }
+  if (!active_renderer || !active_renderer->set_region_terrain(replay.terrain())) {
+    SetWindowTextW(status_text, L"Decoded terrain could not be uploaded to DX12.");
+    return;
+  }
+  show_demo(window);
 }
 LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
   if (msg == WM_CTLCOLORSTATIC) {
@@ -30,6 +60,7 @@ LRESULT CALLBACK proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
   }
   if (msg == WM_COMMAND && HIWORD(wp) == BN_CLICKED) {
     if (LOWORD(wp) == DEMO_BUTTON) { show_demo(hwnd); return 0; }
+    if (LOWORD(wp) == CAPTURE_BUTTON) { open_capture(hwnd); return 0; }
     if (LOWORD(wp) == LOGIN_BUTTON) {
       // Never request or store an SL password before authenticated TLS login
       // and MFA support are implemented.
@@ -54,7 +85,7 @@ void create_login(HWND window, HINSTANCE instance) {
     DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
     CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
   login_panel = CreateWindowExW(WS_EX_CONTROLPARENT, L"STATIC", L"",
-    WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 48, 48, 650, 380,
+    WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 48, 48, 650, 460,
     window, nullptr, instance, nullptr);
   auto add = [&](const wchar_t* cls, const wchar_t* caption, DWORD flags,
                  int x, int y, int w, int h, int id = 0) {
@@ -68,7 +99,7 @@ void create_login(HWND window, HINSTANCE instance) {
     return c;
   };
   add(L"STATIC", L"KAMI  /  BEYOND REALITY", SS_LEFT, 24, 24, 590, 40);
-  add(L"STATIC", L"SECOND LIFE  -  DEVELOPMENT PREVIEW", SS_LEFT, 24, 76, 590, 30);
+  add(L"STATIC", L"SECOND LIFE  -  OFFLINE DX12 PREVIEW (NO LOGIN)", SS_LEFT, 24, 76, 590, 30);
   add(L"STATIC", L"Avatar username", SS_LEFT, 24, 130, 520, 26);
   username_input = add(L"EDIT", L"", WS_TABSTOP | WS_BORDER | ES_AUTOHSCROLL,
     24, 163, 550, 36);
@@ -76,9 +107,11 @@ void create_login(HWND window, HINSTANCE instance) {
     24, 222, 265, 42, LOGIN_BUTTON);
   add(L"BUTTON", L"Explore DX12 demo", WS_TABSTOP | BS_PUSHBUTTON,
     303, 222, 271, 42, DEMO_BUTTON);
+  add(L"BUTTON", L"Load recorded simulator terrain (.kudp)", WS_TABSTOP | BS_PUSHBUTTON,
+    24, 280, 550, 42, CAPTURE_BUTTON);
   status_text = add(L"STATIC",
     L"Authentication is not connected. Do not enter a password.",
-    SS_LEFT, 24, 294, 580, 60);
+    SS_LEFT, 24, 346, 580, 60);
 }
 }
 int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
