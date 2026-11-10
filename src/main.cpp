@@ -213,7 +213,14 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
       }
       if (login_future.valid() &&
           login_future.wait_for(std::chrono::milliseconds(0))==std::future_status::ready) {
-        auto outcome=login_future.get();
+        kami::sl::LoginResult outcome;
+        try {
+          outcome=login_future.get();
+        } catch (const std::exception&) {
+          SetWindowTextW(status_text,
+            L"Login could not finish due to an internal client error. No session was started.");
+          continue;
+        }
         if (!outcome.authenticated) {
           std::string detail=outcome.error.empty() ? "Second Life rejected login without a reason." : outcome.error;
           if (detail.size()>180) detail.resize(180);
