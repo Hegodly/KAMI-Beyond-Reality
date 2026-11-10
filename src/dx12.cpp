@@ -151,6 +151,11 @@ void Dx12::init(HWND hwnd) {
   ok(device->CreateDescriptorHeap(&dsv_desc, IID_PPV_ARGS(&dsv_heap)));
   create_depth(desc.Width, desc.Height);
 }
+bool Dx12::set_region_terrain(const world::TerrainAssembler& terrain) {
+  world::TerrainMesh mesh;
+  if (!terrain.build_partial_render_mesh(mesh)) return false;
+  return set_world_mesh(mesh);
+}
 bool Dx12::set_world_mesh(const world::TerrainMesh& mesh) {
   if (!device || !world::validate_mesh(mesh) || mesh.vertices.empty() || mesh.indices.empty() ||
       mesh.vertices.size() > UINT_MAX / sizeof(world::TerrainVertex) ||
