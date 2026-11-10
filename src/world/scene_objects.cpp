@@ -49,6 +49,34 @@ bool plausible(const SceneObject& ob) {
     ob.x>=-256&&ob.x<=4096&&ob.y>=-256&&ob.y<=4096 &&
     ob.z>=-4096&&ob.z<=8192;
 }
+bool read_shape(Cursor& c,PrimitiveShape& shape) {
+  uint8_t signed_byte=0;
+  if (!c.u8(shape.path_curve)||!c.u8(shape.profile_curve)||
+      !c.u16(shape.path_begin)||!c.u16(shape.path_end)||
+      !c.u8(shape.path_scale_x)||!c.u8(shape.path_scale_y)||
+      !c.u8(signed_byte)) return false;
+  shape.path_shear_x=static_cast<int8_t>(signed_byte);
+  if(!c.u8(signed_byte))return false;
+  shape.path_shear_y=static_cast<int8_t>(signed_byte);
+  if(!c.u8(signed_byte))return false;
+  shape.path_twist=static_cast<int8_t>(signed_byte);
+  if(!c.u8(signed_byte))return false;
+  shape.path_twist_begin=static_cast<int8_t>(signed_byte);
+  if(!c.u8(signed_byte))return false;
+  shape.radius_offset=static_cast<int8_t>(signed_byte);
+  if(!c.u8(signed_byte))return false;
+  shape.taper_x=static_cast<int8_t>(signed_byte);
+  if(!c.u8(signed_byte))return false;
+  shape.taper_y=static_cast<int8_t>(signed_byte);
+  if(!c.u8(shape.revolutions)||!c.u8(signed_byte))return false;
+  shape.skew=static_cast<int8_t>(signed_byte);
+  if(!c.u16(shape.profile_begin)||!c.u16(shape.profile_end)||
+     !c.u16(shape.profile_hollow))return false;
+  shape.valid=shape.path_begin<=50000&&shape.path_end<=50000&&
+    shape.profile_begin<=50000&&shape.profile_end<=50000&&
+    shape.profile_hollow<=50000;
+  return true;
+}
 bool parse_region_prefix(Cursor& c,uint8_t& count) {
   // RegionData: region handle U64, time dilation U16, variable block count U8.
   return c.skip(10)&&c.u8(count)&&count<=128;
@@ -70,7 +98,7 @@ bool parse_full(const std::vector<uint8_t>& data,size_t offset,
     }
     c.pos=start+length;
     uint32_t flags=0;
-    if(!c.u32(ob.parent_id)||!c.u32(flags)||!c.skip(23)||
+    if(!c.u32(ob.parent_id)||!c.u32(flags)||!read_shape(c,ob.shape)||
        !c.var2()||!c.var1()||!c.var2()||!c.var2()||
        !c.var1()||!c.skip(4)||!c.var1()||!c.var1()||
        !c.var1()||!c.skip(16+16+4+1+4+1+12+12)) return false;
