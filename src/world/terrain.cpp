@@ -29,6 +29,10 @@ bool TerrainAssembler::apply_patch_batch(const std::vector<TerrainPatch>& patche
     if (!apply_decoded_patch(patch)) return false;
   return true;
 }
+float TerrainAssembler::renderable_coverage() const {
+  const size_t total = size_t(heights_.width-1)*(heights_.height-1);
+  return total ? static_cast<float>(renderable_cells())/static_cast<float>(total) : 0.0f;
+}
 size_t TerrainAssembler::renderable_cells() const {
   size_t count = 0;
   for (uint32_t y=0;y+1<heights_.height;++y)
