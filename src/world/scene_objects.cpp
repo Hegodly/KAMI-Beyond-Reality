@@ -416,15 +416,47 @@ bool SceneObjects::ingest(const kami::sl::Packet& packet) {
   }
   return true;
 }
-bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit,const TextureAtlas* atlas) const {
+bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit,
+                                        const TextureAtlas* atlas,
+                                        const MeshAssetQueue* assets) const {
   TerrainMesh scene;
   size_t count=0;
   for(const auto& [id,ob]:objects_) {
     if(ob.pcode!=9||count>=limit)continue;
     SceneObject pose;
     if(!resolve_world_pose(objects_,ob,pose))continue;
-    TerrainMesh prim=make_primitive_proxy(ob);
-    tint_primitive_proxy(ob,prim,atlas);
+    TerrainMesh prim;
+    bool genuine_geometry=false;
+    if(ob.mesh.valid && assets) {
+      const auto* record=assets->get(ob.mesh.mesh_id);
+      if(record && record->state==MeshDownloadState::DecodedReady) {
+        for(size_t face_id=0;face_id<record->geometry.faces.size();++face_id) {
+          const auto& face=record->geometry.faces[face_id];
+          if(face.indices.empty())continue;
+          TerrainMesh surface=face;
+          const auto& appearance=ob.textures.faces[
+            std::min(face_id,TextureEntries::max_faces-1)];
+          for(auto& v:surface.vertices) {
+            v.x*=ob.sx;v.y*=ob.sz;v.z*=ob.sy;
+            if(ob.textures.valid) {
+              v.r=float(appearance.rgba[0])/255.f;
+              v.g=float(appearance.rgba[1])/255.f;
+              v.b=float(appearance.rgba[2])/255.f;
+              if(atlas && atlas->uv(appearance.texture_id,v.u,v.v,v.u,v.v))
+                v.texture_mix=1.f;
+            } else {
+              v.r=0.64f;v.g=0.66f;v.b=0.72f;
+            }
+          }
+          if(!append_mesh(prim,surface))return false;
+        }
+        genuine_geometry=!prim.indices.empty();
+      }
+    }
+    if(!genuine_geometry) {
+      prim=make_primitive_proxy(ob);
+      tint_primitive_proxy(ob,prim,atlas);
+    }
     for(auto& vertex:prim.vertices) {
       float x=vertex.x,y=vertex.z,z=vertex.y;
       rotate(pose,x,y,z);
