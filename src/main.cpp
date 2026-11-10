@@ -61,6 +61,8 @@ void start_login() {
   kami::sl::LoginCredentials credentials;
   credentials.username=to_utf8(name);
   credentials.password=to_utf8(secret);
+  credentials.token=to_utf8(control_text(mfa_input,6));
+  SetWindowTextW(mfa_input,L"");
   if (!secret.empty()) SecureZeroMemory(secret.data(),secret.size()*sizeof(wchar_t));
   std::string first,last;
   if (!kami::sl::split_avatar_name(credentials.username,first,last) ||
@@ -79,6 +81,7 @@ void start_login() {
     [credentials=std::move(credentials)]() mutable {
       auto result=kami::sl::login_to_second_life(credentials);
       std::fill(credentials.password.begin(),credentials.password.end(),'\0');
+      std::fill(credentials.token.begin(),credentials.token.end(),'\0');
       return result;
     });
 }
