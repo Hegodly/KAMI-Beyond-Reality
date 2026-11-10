@@ -32,3 +32,8 @@ add_test(NAME udp_packet_to_partial_mesh COMMAND kami_terrain_stream_tests)
 add_executable(kami_capture_tests tests/terrain_capture_tests.cpp world/terrain_capture.cpp world/terrain_stream.cpp world/terrain.cpp world/land_layer.cpp world/region_protocol.cpp world/lludp.cpp)
 target_include_directories(kami_capture_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 add_test(NAME offline_real_packet_replay COMMAND kami_capture_tests)
+
+add_executable(kami_login_tests tests/login_tests.cpp world/login_protocol.cpp world/login_password.cpp world/login_response.cpp world/login_tls.cpp world/simulator_session.cpp world/simulator_transport.cpp world/lludp.cpp)
+target_include_directories(kami_login_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(kami_login_tests PRIVATE ws2_32 winhttp bcrypt ole32 oleaut32)
+add_test(NAME secure_login_protocol COMMAND kami_login_tests)
