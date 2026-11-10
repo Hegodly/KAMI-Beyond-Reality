@@ -1,5 +1,7 @@
 #include "mesh_asset_header.h"
 #include <limits>
+#include <initializer_list>
+#include <cstdint>
 #include <string>
 namespace kami::world {
 namespace {
@@ -70,12 +72,19 @@ struct Reader {
 }
 bool parse_mesh_asset_header(const uint8_t* data,size_t length,
                              MeshAssetHeader& out) {
-  if(!data||length<20||length>16u*1024u*1024u)return false;
+  if(!data||length<6||length>16u*1024u*1024u)return false;
+  // LLSDSerialize permits the binary document directly; some older
+  // mesh assets carry a "<?llsd/binary?>" line first.
   constexpr char magic[]="<?llsd/binary?>\n";
   constexpr size_t prefix=sizeof(magic)-1;
-  if(length<=prefix)return false;
-  for(size_t i=0;i<prefix;++i)if(data[i]!=uint8_t(magic[i]))return false;
-  Reader r{data,length,prefix};
+  size_t begin=0;
+  if(length>=prefix) {
+    bool matches=true;
+    for(size_t i=0;i<prefix;++i)
+      if(data[i]!=uint8_t(magic[i])){matches=false;break;}
+    if(matches)begin=prefix;
+  }
+  Reader r{data,length,begin};
   uint8_t marker=0;uint32_t entries=0;
   if(!r.byte(marker)||marker!='{'||!r.be32(entries)||entries>256)return false;
   MeshAssetHeader parsed;
