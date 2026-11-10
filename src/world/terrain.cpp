@@ -87,6 +87,7 @@ bool validate_mesh(const TerrainMesh& mesh) {
 bool append_mesh(TerrainMesh& destination, const TerrainMesh& source) {
   if (source.vertices.empty() || source.indices.empty() ||
       source.indices.size() % 3 != 0 ||
+      source.vertices.size() > UINT32_MAX ||
       destination.vertices.size() > UINT32_MAX - source.vertices.size() ||
       destination.indices.size() > UINT32_MAX - source.indices.size()) return false;
   for (const auto& v : source.vertices)
