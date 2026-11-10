@@ -19,6 +19,7 @@ public:
   bool complete() const { return received_count_ == received_.size(); }
   size_t received_samples() const { return received_count_; }
   float completion_ratio() const;
+  void reset();
 private:
   Heightfield heights_;
   std::vector<uint8_t> received_;
