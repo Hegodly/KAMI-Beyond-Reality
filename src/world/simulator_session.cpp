@@ -45,6 +45,10 @@ bool SimulatorSession::connect(const AuthenticatedSession& s) {
   if (!transport_.send(handshake.data(),handshake.size())) {
     disconnect(); return false;
   }
+  const auto movement=make_complete_agent_movement(s,2);
+  if (movement.empty() || !transport_.send(movement.data(),movement.size())) {
+    disconnect(); return false;
+  }
   return true;
 }
 size_t SimulatorSession::poll(const Receiver& receiver, size_t limit) {
