@@ -103,8 +103,10 @@ bool TerrainAssembler::build_partial_render_mesh(TerrainMesh& output) const {
 }
 bool TerrainAssembler::build_render_mesh(TerrainMesh& output) const {
   if (!ready_to_render()) return false;
-  output = make_terrain_mesh(heights_);
-  return validate_mesh(output);
+  TerrainMesh candidate = make_terrain_mesh(heights_);
+  if (!validate_mesh(candidate)) return false;
+  output = std::move(candidate);
+  return true;
 }
 bool TerrainAssembler::ready_to_render() const {
   return complete() && heights_.valid();
