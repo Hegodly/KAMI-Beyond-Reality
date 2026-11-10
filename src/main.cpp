@@ -19,6 +19,7 @@ kami::Dx12* active_renderer = nullptr;
 HWND login_panel = nullptr;
 HWND username_input = nullptr;
 HWND password_input = nullptr;
+HWND mfa_input = nullptr;
 std::future<kami::sl::LoginResult> login_future;
 std::unique_ptr<kami::sl::SimulatorSession> connected_session;
 std::unique_ptr<kami::world::TerrainStream> live_terrain;
@@ -147,7 +148,7 @@ void create_login(HWND window, HINSTANCE instance) {
     DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
     CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
   login_panel = CreateWindowExW(WS_EX_CONTROLPARENT, L"STATIC", L"",
-    WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 48, 48, 650, 520,
+    WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 48, 48, 650, 590,
     window, nullptr, instance, nullptr);
   auto add = [&](const wchar_t* cls, const wchar_t* caption, DWORD flags,
                  int x, int y, int w, int h, int id = 0) {
@@ -168,15 +169,17 @@ void create_login(HWND window, HINSTANCE instance) {
   add(L"STATIC", L"Second Life password (never saved)", SS_LEFT,24,210,550,26);
   password_input = add(L"EDIT",L"",WS_TABSTOP | WS_BORDER | ES_PASSWORD | ES_AUTOHSCROLL,
     24,242,550,36);
+  add(L"STATIC",L"6-digit MFA code (if requested)",SS_LEFT,24,281,550,26);
+  mfa_input=add(L"EDIT",L"",WS_TABSTOP|WS_BORDER|ES_AUTOHSCROLL,24,309,550,36);
   add(L"BUTTON", L"Connect to Second Life", WS_TABSTOP | BS_PUSHBUTTON,
-    24, 300, 265, 42, LOGIN_BUTTON);
+    24, 361, 265, 42, LOGIN_BUTTON);
   add(L"BUTTON", L"Explore DX12 demo", WS_TABSTOP | BS_PUSHBUTTON,
-    303, 300, 271, 42, DEMO_BUTTON);
+    303, 361, 271, 42, DEMO_BUTTON);
   add(L"BUTTON", L"Load recorded terrain (.kudp)", WS_TABSTOP | BS_PUSHBUTTON,
-    24, 354, 550, 42, CAPTURE_BUTTON);
+    24, 414, 550, 42, CAPTURE_BUTTON);
   status_text = add(L"STATIC",
     L"Experimental authentication; MFA and full world features are not complete.",
-    SS_LEFT, 24, 416, 580, 76);
+    SS_LEFT, 24, 476, 580, 86);
 }
 }
 int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
