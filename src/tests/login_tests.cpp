@@ -24,6 +24,15 @@ int main() {
   assert(request.find("$1$5f4dcc3b5aa765d61d8327deb882cf99")!=std::string::npos);
   assert(request.find(">password<")==std::string::npos);
   assert(make_login_request({"Example","password","nope"}).empty());
+  // These scalar values must be typed XML-RPC integers like official viewer.
+  assert(request.find("<name>agree_to_tos</name><value><int>0</int>")!=std::string::npos);
+  assert(request.find("<name>read_critical</name><value><int>0</int>")!=std::string::npos);
+  assert(request.find("<name>address_size</name><value><int>64</int>")!=std::string::npos);
+  assert(request.find("<name>extended_errors</name><value><int>1</int>")!=std::string::npos);
+  assert(request.find("<value><string>inventory-root</string></value>")!=std::string::npos);
+  assert(request.find("<value><string>inventory-skeleton</string></value>")!=std::string::npos);
+  assert(request.find("<value><string>login-flags</string></value>")!=std::string::npos);
+  assert(request.find("<value><string>global-textures</string></value>")!=std::string::npos);
   assert(request.find("<name>token</name>")!=std::string::npos);
   assert(request.find("<name>mfa_hash</name>")!=std::string::npos);
   credentials.token="123456";
