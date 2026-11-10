@@ -308,10 +308,13 @@ void Dx12::frame() {
     wchar_t title[256]{};
     if (recorded_terrain) {
       swprintf_s(title,
-        L"KAMI DX12 [%s %.1f%% | %zu prim proxies | J2K staged %zu / queued %zu] | %u FPS | F8: terrain capture | Camera: %.1f, %.1f, %.1f",
+        L"KAMI DX12 [%s %.1f%% | %zu prims | J2K %zu staged / %zu queued | caps %s] | %u FPS | F8: terrain capture | Cam: %.1f, %.1f, %.1f",
         live_scene ? L"Second Life scene" : L"Capture terrain",
         terrain_sample_coverage, scene_proxy_roots,
-        staged_encoded_textures,waiting_texture_assets,measured_fps,
+        staged_encoded_textures,waiting_texture_assets,
+        asset_cap_state==2?L"ready":asset_cap_state==1?L"pending":
+          asset_cap_state==3?L"unavailable":L"missing",
+        measured_fps,
         camera_x, camera_y, camera_z);
     } else {
       swprintf_s(title,L"KAMI DX12 [%s] | %u FPS | Camera: %.1f, %.1f, %.1f",
