@@ -21,4 +21,5 @@ jobs:
           path: |
             build/src/Release/KAMIViewer.exe
             build/src/OpenJPEG-LICENSE.txt
+            build/src/zlib-LICENSE.txt
           if-no-files-found: error
