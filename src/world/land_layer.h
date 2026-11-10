@@ -9,6 +9,7 @@ public:
   bool read_bits(unsigned count, uint32_t& value);
   bool read_signed_bits(unsigned count, int32_t& value);
   bool peek_bits(unsigned count, uint32_t& value) const;
+  bool skip_bits(size_t count);
   size_t bits_remaining() const;
   size_t bit_position() const { return bit_position_; }
 private:
