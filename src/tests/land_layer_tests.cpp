@@ -16,6 +16,9 @@ int main() {
   LandBitReader empty(nullptr,0);
   assert(empty.bits_remaining()==0 && !empty.read_bits(1,v));
   assert(empty.read_bits(0,v) && v==0);
+  LandBitReader excessive(bytes,sizeof(bytes));
+  assert(!excessive.read_bits(33,v));
+  assert(excessive.bits_remaining()==32);
   LandBitReader header_reader(bytes,sizeof(bytes));
   LandGroupHeader header;
   assert(read_land_group_header(header_reader,header));
