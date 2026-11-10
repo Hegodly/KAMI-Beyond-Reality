@@ -50,6 +50,7 @@ public:
   bool ingest(const kami::sl::Packet& packet);
   bool build_proxy_mesh(TerrainMesh& output,size_t limit=2000) const;
   size_t visible_roots() const;
+  size_t renderable_prims() const;
   size_t total_objects() const {return objects_.size();}
   uint64_t revision() const {return revision_;}
   const SceneStats& stats() const {return stats_;}

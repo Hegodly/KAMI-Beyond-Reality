@@ -326,7 +326,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
           static_cast<unsigned long long>(stats.packets),
           static_cast<unsigned long long>(stats.decoded),
           live_terrain->terrain().completion_ratio()*100.0f,
-          live_objects->visible_roots(),
+          live_objects->renderable_prims(),
           static_cast<unsigned long long>(objects.full_packets),
           static_cast<unsigned long long>(objects.compressed_packets),
           static_cast<unsigned long long>(objects.cached_packets),

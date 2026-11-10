@@ -152,7 +152,7 @@ bool Dx12::set_region_scene(const world::TerrainAssembler& terrain,
     pitch = std::clamp(std::atan2(center_y - camera_y,
       center_z - camera_z), -1.15f, -0.08f);
   }
-  scene_proxy_roots=objects?std::min<size_t>(objects->visible_roots(),1000):0;
+  scene_proxy_roots=objects?std::min<size_t>(objects->renderable_prims(),1000):0;
   terrain_sample_coverage = terrain.completion_ratio()*100.0f;
   terrain.min_max_received_heights(terrain_min_y,terrain_max_y);
   const auto continuity=terrain.measure_continuity();

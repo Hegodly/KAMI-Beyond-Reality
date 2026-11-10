@@ -1,6 +1,7 @@
 #include "scene_objects.h"
 #include "primitive_shapes.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -170,6 +171,39 @@ void rotate(const SceneObject& ob,float& x,float& y,float& z) {
   x=xx;y=yy;z=zz;
 }
 }
+namespace {
+bool resolve_world_pose(const std::unordered_map<uint32_t,SceneObject>& all,
+                        const SceneObject& object,SceneObject& result) {
+  std::array<const SceneObject*,16> chain{};
+  size_t count=0;
+  const SceneObject* current=&object;
+  while (current) {
+    if(count>=chain.size())return false; // unreasonable nesting
+    for(size_t i=0;i<count;++i)
+      if(chain[i]->local_id==current->local_id)return false; // cycle
+    chain[count++]=current;
+    if(!current->parent_id)break;
+    const auto it=all.find(current->parent_id);
+    if(it==all.end())return false; // do not place orphaned links at fake origins
+    current=&it->second;
+  }
+  if(!count||chain[count-1]->parent_id)return false;
+  result=*chain[count-1]; // true root pose is region-local
+  for(size_t i=count-1;i>0;--i) {
+    const SceneObject& child=*chain[i-1];
+    float x=child.x,y=child.y,z=child.z;
+    rotate(result,x,y,z); // child offset is root-local, in SL XYZ
+    result.x+=x;result.y+=y;result.z+=z;
+    const float ax=result.qx,ay=result.qy,az=result.qz,aw=result.qw;
+    result.qx=aw*child.qx+ax*child.qw+ay*child.qz-az*child.qy;
+    result.qy=aw*child.qy-ax*child.qz+ay*child.qw+az*child.qx;
+    result.qz=aw*child.qz+ax*child.qy-ay*child.qx+az*child.qw;
+    result.qw=aw*child.qw-ax*child.qx-ay*child.qy-az*child.qz;
+    if(!normalize_rotation(result))return false;
+  }
+  return std::isfinite(result.x)&&std::isfinite(result.y)&&std::isfinite(result.z);
+}
+}
 const SceneObject* SceneObjects::get(uint32_t id) const {
   const auto it=objects_.find(id);
   return it==objects_.end()?nullptr:&it->second;
@@ -181,6 +215,13 @@ size_t SceneObjects::visible_roots() const {
   size_t total=0;
   for(const auto& [id,ob]:objects_)if(ob.parent_id==0&&ob.pcode==9)++total;
   return total;
+}
+size_t SceneObjects::renderable_prims() const {
+  size_t count=0;
+  SceneObject pose;
+  for(const auto& [id,ob]:objects_)
+    if(ob.pcode==9&&resolve_world_pose(objects_,ob,pose))++count;
+  return count;
 }
 std::vector<uint32_t> SceneObjects::take_cache_misses(size_t limit) {
   std::vector<uint32_t> ids;
@@ -236,14 +277,16 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit) const {
   TerrainMesh scene;
   size_t count=0;
   for(const auto& [id,ob]:objects_) {
-    if(ob.pcode!=9||ob.parent_id||count>=limit)continue;
+    if(ob.pcode!=9||count>=limit)continue;
+    SceneObject pose;
+    if(!resolve_world_pose(objects_,ob,pose))continue;
     TerrainMesh prim=make_primitive_proxy(ob);
     for(auto& vertex:prim.vertices) {
       float x=vertex.x,y=vertex.z,z=vertex.y;
-      rotate(ob,x,y,z);
-      vertex.x=ob.x+x-127.5f;
-      vertex.y=ob.z+z;
-      vertex.z=ob.y+y-32.f;
+      rotate(pose,x,y,z);
+      vertex.x=pose.x+x-127.5f;
+      vertex.y=pose.z+z;
+      vertex.z=pose.y+y-32.f;
       vertex.r=0.47f;vertex.g=0.47f;vertex.b=0.55f;
     }
     if(!append_mesh(scene,prim))return false;
