@@ -2,6 +2,9 @@
 #include <stdexcept>
 #include <d3dcompiler.h>
 #include <cstring>
+#include <vector>
+#include <cmath>
+#include <cstdint>
 #pragma comment(lib, "d3dcompiler.lib")
 namespace {
 void ok(HRESULT hr) { if (FAILED(hr)) throw std::runtime_error("D3D12 operation failed"); }
@@ -53,7 +56,13 @@ void Dx12::init(HWND hwnd) {
     struct VSOutput { float4 position : SV_POSITION; float3 color : COLOR; };
     VSOutput VSMain(VSInput input) {
       VSOutput output;
-      output.position = float4(input.position, 1.0);
+      // World coordinates: X across terrain, Y elevation, Z distance.
+      // Fixed perspective camera above the terrain, looking toward +Z.
+      float3 p = input.position - float3(0.0, 5.0, -10.0);
+      float depth = p.z + p.y * 0.22;
+      float height = p.y - p.z * 0.22;
+      float aspect = 1280.0 / 720.0;
+      output.position = float4(p.x / aspect, height, depth * 1.001 - 0.1, depth);
       output.color = input.color;
       return output;
     }
@@ -89,18 +98,38 @@ void Dx12::init(HWND hwnd) {
   pso.NumRenderTargets = 1;
   pso.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
   pso.SampleDesc.Count = 1;
+  pso.DepthStencilState.DepthEnable = TRUE;
+  pso.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+  pso.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+  pso.DSVFormat = DXGI_FORMAT_D32_FLOAT;
   ok(device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pipeline)));
   struct Vertex { float x, y, z, r, g, b; };
-  const Vertex vertices[] = {
-    {0.0f, 0.65f, 0.0f, 0.20f, 0.85f, 1.0f},
-    {0.65f, -0.60f, 0.0f, 0.45f, 0.25f, 1.0f},
-    {-0.65f, -0.60f, 0.0f, 0.05f, 0.30f, 0.75f}
-  };
+  // Procedural terrain is a geometry pipeline milestone, NOT Second Life land.
+  constexpr int side = 33;
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
+  vertices.reserve(side * side);
+  for (int z = 0; z < side; ++z) {
+    for (int x = 0; x < side; ++x) {
+      float px = (x - 16) * 1.25f;
+      float pz = z * 1.25f + 2.0f;
+      float y = 1.2f * std::sin(px * 0.23f) * std::cos(pz * 0.19f);
+      float green = 0.28f + 0.15f * (y + 1.2f) / 2.4f;
+      vertices.push_back({px, y, pz, 0.10f, green, 0.24f});
+    }
+  }
+  for (int z = 0; z < side - 1; ++z) {
+    for (int x = 0; x < side - 1; ++x) {
+      uint32_t i = static_cast<uint32_t>(z * side + x);
+      indices.insert(indices.end(), {i, i + side, i + 1, i + 1, i + side, i + side + 1});
+    }
+  }
+  index_count = static_cast<UINT>(indices.size());
   D3D12_HEAP_PROPERTIES upload{};
   upload.Type = D3D12_HEAP_TYPE_UPLOAD;
   D3D12_RESOURCE_DESC resource{};
   resource.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-  resource.Width = sizeof(vertices);
+  resource.Width = vertices.size() * sizeof(Vertex);
   resource.Height = 1;
   resource.DepthOrArraySize = 1;
   resource.MipLevels = 1;
@@ -111,11 +140,44 @@ void Dx12::init(HWND hwnd) {
   void* mapped = nullptr;
   D3D12_RANGE read_range{0, 0};
   ok(vertex_buffer->Map(0, &read_range, &mapped));
-  std::memcpy(mapped, vertices, sizeof(vertices));
+  std::memcpy(mapped, vertices.data(), static_cast<size_t>(resource.Width));
   vertex_buffer->Unmap(0, nullptr);
   vertex_view.BufferLocation = vertex_buffer->GetGPUVirtualAddress();
-  vertex_view.SizeInBytes = sizeof(vertices);
+  vertex_view.SizeInBytes = static_cast<UINT>(resource.Width);
   vertex_view.StrideInBytes = sizeof(Vertex);
+  resource.Width = indices.size() * sizeof(uint32_t);
+  ok(device->CreateCommittedResource(&upload, D3D12_HEAP_FLAG_NONE, &resource,
+    D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&index_buffer)));
+  ok(index_buffer->Map(0, &read_range, &mapped));
+  std::memcpy(mapped, indices.data(), static_cast<size_t>(resource.Width));
+  index_buffer->Unmap(0, nullptr);
+  index_view.BufferLocation = index_buffer->GetGPUVirtualAddress();
+  index_view.SizeInBytes = static_cast<UINT>(resource.Width);
+  index_view.Format = DXGI_FORMAT_R32_UINT;
+  D3D12_DESCRIPTOR_HEAP_DESC dsv_desc{};
+  dsv_desc.NumDescriptors = 1;
+  dsv_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+  ok(device->CreateDescriptorHeap(&dsv_desc, IID_PPV_ARGS(&dsv_heap)));
+  D3D12_HEAP_PROPERTIES default_heap{};
+  default_heap.Type = D3D12_HEAP_TYPE_DEFAULT;
+  D3D12_RESOURCE_DESC depth_desc{};
+  depth_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+  depth_desc.Width = desc.Width;
+  depth_desc.Height = desc.Height;
+  depth_desc.DepthOrArraySize = 1;
+  depth_desc.MipLevels = 1;
+  depth_desc.Format = DXGI_FORMAT_D32_FLOAT;
+  depth_desc.SampleDesc.Count = 1;
+  depth_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+  depth_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+  D3D12_CLEAR_VALUE depth_clear{};
+  depth_clear.Format = DXGI_FORMAT_D32_FLOAT;
+  depth_clear.DepthStencil.Depth = 1.0f;
+  ok(device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE,
+    &depth_desc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &depth_clear,
+    IID_PPV_ARGS(&depth_buffer)));
+  device->CreateDepthStencilView(depth_buffer.Get(), nullptr,
+    dsv_heap->GetCPUDescriptorHandleForHeapStart());
 }
 void Dx12::sync() {
   if (!queue || !fence) return;
@@ -141,14 +203,17 @@ void Dx12::frame() {
   cpu.ptr += frame_index * rtv_step;
   const float clear[] = {0.015f, 0.025f, 0.045f, 1.0f};
   commands->ClearRenderTargetView(cpu, clear, 0, nullptr);
-  commands->OMSetRenderTargets(1, &cpu, FALSE, nullptr);
+  auto depth_handle = dsv_heap->GetCPUDescriptorHandleForHeapStart();
+  commands->ClearDepthStencilView(depth_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+  commands->OMSetRenderTargets(1, &cpu, FALSE, &depth_handle);
   commands->RSSetViewports(1, &viewport);
   commands->RSSetScissorRects(1, &scissor);
   commands->SetGraphicsRootSignature(root_signature.Get());
   commands->SetPipelineState(pipeline.Get());
   commands->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
   commands->IASetVertexBuffers(0, 1, &vertex_view);
-  commands->DrawInstanced(3, 1, 0, 0);
+  commands->IASetIndexBuffer(&index_view);
+  commands->DrawIndexedInstanced(index_count, 1, 0, 0, 0);
   barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
   barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
   commands->ResourceBarrier(1, &barrier);
