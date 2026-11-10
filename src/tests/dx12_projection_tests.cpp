@@ -12,6 +12,8 @@ int main() {
     "atlas_texture.Sample(atlas_sampler, atlas_uv)") != nullptr);
   assert(std::strstr(kami::terrain_dx12_shader,
     "clip(input.alpha * sampled.a - 0.025)") != nullptr);
+  assert(std::strstr(kami::terrain_dx12_shader,
+    "lerp(lighting,1.0,saturate(input.fullbright))") != nullptr);
   ID3DBlob* vs=nullptr;
   ID3DBlob* ps=nullptr;
   ID3DBlob* errors=nullptr;
