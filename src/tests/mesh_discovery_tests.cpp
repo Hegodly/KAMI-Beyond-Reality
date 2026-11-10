@@ -16,7 +16,7 @@ int main(){
   partial.pop_back();
   assert(!find_mesh_extra(partial.data(),partial.size(),decoded));
   assert(decoded.valid && decoded.mesh_id[0]==1);
-  auto sculpt=mesh;sculpt[11]=0x30;
+  auto sculpt=mesh;sculpt[10]=0x30;
   assert(find_mesh_extra(sculpt.data(),sculpt.size(),decoded)&&decoded.valid);
   sculpt.back()=6;
   assert(find_mesh_extra(sculpt.data(),sculpt.size(),decoded)&&!decoded.valid);
