@@ -498,6 +498,13 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit,
         vertex.r=0.47f;vertex.g=0.47f;vertex.b=0.55f;
       }
     }
+    // Bound per-frame scene rebuilds. Do not let a dense region with many
+    // repeated mesh instances allocate gigabytes of transient geometry.
+    constexpr size_t max_scene_vertices=1000000;
+    constexpr size_t max_scene_indices=3000000;
+    if(prim.vertices.size()>max_scene_vertices-scene.vertices.size() ||
+       prim.indices.size()>max_scene_indices-scene.indices.size())
+      continue;
     if(!append_mesh(scene,prim))return false;
     ++count;
   }
