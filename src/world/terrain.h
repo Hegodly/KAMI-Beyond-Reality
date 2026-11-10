@@ -6,7 +6,7 @@ namespace kami::sl { struct Packet; }
 namespace kami::world {
 struct TerrainPatch;
 struct TerrainMesh;
-struct TerrainVertex { float x, y, z, r, g, b; float u=0,v=0,texture_mix=0; };
+struct TerrainVertex { float x, y, z, r, g, b; float u=0,v=0,texture_mix=0,alpha=1; };
 struct TerrainMesh {
   std::vector<TerrainVertex> vertices;
   std::vector<uint32_t> indices;
