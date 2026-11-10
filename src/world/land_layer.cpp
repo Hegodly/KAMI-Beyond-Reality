@@ -6,7 +6,7 @@
 namespace kami::sl {
 LandBitReader::LandBitReader(const uint8_t* bytes,size_t size):bytes_(bytes),size_(size){}
 size_t LandBitReader::bits_remaining() const {
-  return bytes_ && bit_position_ <= size_*8 ? size_*8-bit_position_ : 0;
+  return bytes_ && size_ <= SIZE_MAX / 8 && bit_position_ <= size_*8 ? size_*8-bit_position_ : 0;
 }
 bool LandBitReader::read_float32(float& value) {
   uint32_t raw=0;
