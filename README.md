@@ -103,3 +103,28 @@ fit in the atlas before more advanced eviction and streaming are added.
 The title bar reports capability state and JPEG2000 staging counts.
 A successful CI build proves synthetic codec/UV tests, **not** that textures
 appear on a resident's actual land. See [texture pipeline](docs/TEXTURE_PIPELINE.md).
+
+## First live mesh-asset geometry path
+
+KAMI now recognizes Second Life **mesh ExtraParams** (sculpt type 5) in
+ordinary and compressed ObjectUpdate messages. It requests `GetMesh2`
+(or `GetMesh`) from the current simulator's authenticated seed capability,
+deduplicates the referenced mesh UUIDs, and downloads up to one mesh at a
+time on a separate worker. Limits are 12 MiB per asset, 32 MiB of encoded
+assets total, and 128 distinct mesh assets in the queue.
+
+The binary LLSD header is bounds-checked. Mesh `high_lod` data is inflated
+with statically linked zlib (up to 8 MiB output) and parsed for vertices,
+triangle lists and `TexCoord0` UV coordinates, with optional position and
+UV domains. Successfully decoded static faces are transformed by the
+object's scale, rotation and linkset parent position; material-face colors
+and previously decoded JPEG2000 images are applied when available.
+
+**Limitations:** this is an experimental first LOD renderer, not the official
+SL mesh engine. Skinning, normals/tangents, geometric LOD selection, rigid
+physics, rigged attachments, flexible objects, glTF scene assets, PBR and
+per-face UV rotation/repeat are not implemented. A compressed or unrecognized
+asset remains a clearly approximate primitive placeholder. The main title
+and status panel distinguish real decoded mesh geometry from proxy objects.
+Live in-world correctness still needs testing. Do not treat a successful
+CI run as proof that every object on a decorated region will load.
