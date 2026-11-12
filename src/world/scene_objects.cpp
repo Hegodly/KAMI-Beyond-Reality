@@ -452,8 +452,17 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit,
                                         const MeshAssetQueue* assets) const {
   TerrainMesh scene;
   size_t count=0;
-  for(const auto& [id,ob]:objects_) {
-    if(ob.pcode!=9||count>=limit)continue;
+  // Stable selection matters when the scene exceeds the rendering budget:
+  // unordered_map iteration order can change after ObjectUpdate insertions,
+  // otherwise causing unrelated buildings to vanish between uploads.
+  std::vector<uint32_t> ordered_ids;
+  ordered_ids.reserve(objects_.size());
+  for(const auto& [id,ob]:objects_)
+    if(ob.pcode==9)ordered_ids.push_back(id);
+  std::sort(ordered_ids.begin(),ordered_ids.end());
+  for(const uint32_t id:ordered_ids) {
+    if(count>=limit)break;
+    const auto& ob=objects_.at(id);
     SceneObject pose;
     if(!resolve_world_pose(objects_,ob,pose))continue;
     TerrainMesh prim;
