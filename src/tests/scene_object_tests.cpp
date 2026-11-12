@@ -400,6 +400,13 @@ int main() {
     assert(vertex.y>=22.f&&vertex.y<=28.f);
     assert(vertex.x>=-.5f&&vertex.x<=1.5f);
   }
+  // A low-ID placeholder must not displace a decoded condo mesh when
+  // only one object can be drawn in the current scene budget.
+  assert(mesh_scene.ingest(make_compressed(10)));
+  kami::world::TerrainMesh priority_mesh;
+  assert(mesh_scene.build_proxy_mesh(priority_mesh,1,nullptr,&actual_meshes));
+  assert(priority_mesh.vertices.size()==3);
+  assert(priority_mesh.indices.size()==3);
   assert(mesh_scene.ingest(make_kill(1001)));
   assert(mesh_scene.ingest(make_kill(1002)));
   assert(mesh_scene.ingest(make_kill(1003)));

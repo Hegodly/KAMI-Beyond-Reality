@@ -459,7 +459,19 @@ bool SceneObjects::build_proxy_mesh(TerrainMesh& output,size_t limit,
   ordered_ids.reserve(objects_.size());
   for(const auto& [id,ob]:objects_)
     if(ob.pcode==9)ordered_ids.push_back(id);
-  std::sort(ordered_ids.begin(),ordered_ids.end());
+  // When the scene is capped, preserve real downloaded mesh geometry
+  // ahead of temporary proxy boxes. Use local ID as a deterministic tie-break.
+  std::sort(ordered_ids.begin(),ordered_ids.end(),
+    [&](uint32_t a,uint32_t b) {
+      const auto ready=[&](uint32_t id) {
+        const auto& object=objects_.at(id);
+        if(!assets || !object.mesh.valid)return false;
+        const auto* record=assets->get(object.mesh.mesh_id);
+        return record && record->state==MeshDownloadState::DecodedReady;
+      };
+      const bool ar=ready(a),br=ready(b);
+      return ar!=br?ar:a<b;
+    });
   for(const uint32_t id:ordered_ids) {
     if(count>=limit)break;
     const auto& ob=objects_.at(id);
