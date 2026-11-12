@@ -187,6 +187,10 @@ bool build_face(const Submesh& s,TerrainMesh& out) {
     if(idx>=count)return false;
     face.indices.push_back(idx);
   }
+  // SL (X,Y,Z) -> KAMI (X,Z,Y) is a reflection: reverse winding so
+  // front faces remain front-facing after the handedness change.
+  for(size_t i=0;i<face.indices.size();i+=3)
+    std::swap(face.indices[i+1],face.indices[i+2]);
   for(size_t i=0;i<face.indices.size();i+=3)
     if(face.indices[i]==face.indices[i+1]||
        face.indices[i]==face.indices[i+2]||
