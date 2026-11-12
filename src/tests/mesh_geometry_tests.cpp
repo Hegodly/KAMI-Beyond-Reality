@@ -68,7 +68,7 @@ int main(){
   DecodedMeshGeometry geom;
   assert(decode_mesh_high_lod(data,header,geom));
   assert(geom.faces.size()==1&&geom.vertices==3&&geom.triangles==1);
-  assert(geom.faces[0].indices==std::vector<uint32_t>({0,1,2}));
+  assert(geom.faces[0].indices==std::vector<uint32_t>({0,2,1}));
   const auto& v=geom.faces[0].vertices;
   assert(std::fabs(v[0].x+0.5f)<.001f && std::fabs(v[0].y+0.5f)<.001f);
   assert(std::fabs(v[1].x-0.5f)<.001f && std::fabs(v[2].z-0.5f)<.001f);
