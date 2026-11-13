@@ -23,7 +23,7 @@ void binary(std::vector<uint8_t>& d,const std::vector<uint8_t>& bytes){
 void le16(std::vector<uint8_t>& d,uint16_t n){
   d.push_back(uint8_t(n));d.push_back(uint8_t(n>>8));
 }
-std::vector<uint8_t> fixture(bool bad_triangle=false,bool medium_only=false) {
+std::vector<uint8_t> fixture(bool bad_triangle=false,bool medium_only=false,bool degenerate=false) {
   std::vector<uint8_t> sub{'['};be32(sub,1);
   sub.push_back('{');be32(sub,3);
   key(sub,"Position");
@@ -32,7 +32,7 @@ std::vector<uint8_t> fixture(bool bad_triangle=false,bool medium_only=false) {
   binary(sub,positions);
   key(sub,"TriangleList");
   std::vector<uint8_t> tris;
-  for(const uint16_t n:std::array<uint16_t,3>{0,1,static_cast<uint16_t>(bad_triangle?4:2)})
+  for(const uint16_t n:std::array<uint16_t,3>{0,static_cast<uint16_t>(degenerate?0:1),static_cast<uint16_t>(bad_triangle?4:2)})
     le16(tris,n);
   binary(sub,tris);
   key(sub,"TexCoord0");
@@ -82,6 +82,13 @@ int main(){
   assert(decode_mesh_best_lod(sparse,sparse_header,geom));
   assert(geom.quality==MeshLodQuality::Medium);
   assert(geom.vertices==3 && geom.triangles==1);
+  // A repeated-index triangle must not make the entire asset fail.
+  // It produces an empty material face, preserving the decoder's result.
+  auto degenerate=fixture(false,false,true);
+  MeshAssetHeader degenerate_header;
+  assert(parse_mesh_asset_header(degenerate,degenerate_header));
+  assert(decode_mesh_high_lod(degenerate,degenerate_header,geom));
+  assert(geom.faces.size()==1 && geom.faces[0].indices.empty());
   auto broken=fixture(true);
   MeshAssetHeader bad_header;
   assert(parse_mesh_asset_header(broken,bad_header));
