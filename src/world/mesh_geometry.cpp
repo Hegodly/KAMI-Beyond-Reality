@@ -182,19 +182,26 @@ bool build_face(const Submesh& s,TerrainMesh& out) {
     }
     face.vertices.push_back(v);
   }
-  for(size_t i=0;i<s.indices.size();i+=2){
-    auto idx=le16(s.indices,i);
-    if(idx>=count)return false;
-    face.indices.push_back(idx);
+  // Some real SL mesh assets contain degenerate triangles (including
+  // repeated indices). Discard those faces rather than losing the whole
+  // object; malformed out-of-range indices still invalidate the asset.
+  for(size_t i=0;i<s.indices.size();i+=6) {
+    const uint16_t a=le16(s.indices,i);
+    const uint16_t b=le16(s.indices,i+2);
+    const uint16_t c=le16(s.indices,i+4);
+    if(a>=count||b>=count||c>=count)return false;
+    if(a==b||a==c||b==c)continue;
+    const auto& va=face.vertices[a];
+    const auto& vb=face.vertices[b];
+    const auto& vc=face.vertices[c];
+    const double abx=double(vb.x)-va.x,aby=double(vb.y)-va.y,abz=double(vb.z)-va.z;
+    const double acx=double(vc.x)-va.x,acy=double(vc.y)-va.y,acz=double(vc.z)-va.z;
+    const double cx=aby*acz-abz*acy,cy=abz*acx-abx*acz,cz=abx*acy-aby*acx;
+    if(cx*cx+cy*cy+cz*cz<1e-20)continue;
+    // SL (X,Y,Z) -> KAMI (X,Z,Y) reverses handedness.
+    face.indices.insert(face.indices.end(),{a,c,b});
   }
-  // SL (X,Y,Z) -> KAMI (X,Z,Y) is a reflection: reverse winding so
-  // front faces remain front-facing after the handedness change.
-  for(size_t i=0;i<face.indices.size();i+=3)
-    std::swap(face.indices[i+1],face.indices[i+2]);
-  for(size_t i=0;i<face.indices.size();i+=3)
-    if(face.indices[i]==face.indices[i+1]||
-       face.indices[i]==face.indices[i+2]||
-       face.indices[i+1]==face.indices[i+2])return false;
+  if(face.indices.empty())return true; // empty material face, not a fatal asset
   if(!validate_mesh(face))return false;
   out=std::move(face);
   return true;
